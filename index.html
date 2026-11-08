@@ -244,7 +244,7 @@ html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 .tcard small{color:var(--muted);font-size:12px;line-height:1.4;display:block;margin-top:2px}
 .tcard .del{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.9);font-size:12px;color:var(--muted)}
 .tcard .del:hover{color:var(--danger)}
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#2b2a33;color:#fff;padding:11px 18px;border-radius:12px;z-index:60;font-size:13px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4);max-width:90vw}
+.toast{width:max-content;max-width:calc(100vw - 32px)!important;word-break:keep-all;position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#2b2a33;color:#fff;padding:11px 18px;border-radius:12px;z-index:60;font-size:13px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4);max-width:90vw}
 #stage{position:fixed;left:-12000px;top:0;pointer-events:none}
 
 /* ---------- 모바일 ---------- */
@@ -396,6 +396,35 @@ body.locked .toast{z-index:220}
 #updbar{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top));transform:translateX(-50%);z-index:150;background:#2b2a33;color:#fff;border-radius:14px;padding:8px 8px 8px 16px;display:flex;align-items:center;gap:8px;box-shadow:0 12px 30px -8px rgba(0,0,0,.45);font-size:13.5px;white-space:nowrap;max-width:calc(100vw - 20px)}
 #updbar .go{background:var(--accent);color:#fff;border-radius:9px;padding:7px 12px;font-weight:700;font-size:13px}
 #updbar .later{color:#c9c7d1;padding:7px 8px;font-size:13px}
+/* 만년 다이어리 */
+.paper .calhead{display:flex;align-items:center;gap:10px;margin:8px 0 6px}
+.paper .calttl{font-size:20px;font-weight:700;flex:1;min-width:0}
+.paper .calfill,.paper .wkadd{font-family:var(--ui);font-size:12.5px;padding:5px 12px;border-radius:999px;border:1px dashed var(--accent);color:var(--accent);background:#fff;cursor:pointer;user-select:none;white-space:nowrap;display:inline-block}
+.paper .calfill:hover,.paper .wkadd:hover{background:var(--accent);color:#fff}
+.paper .wkaddp{text-align:center;margin:8px 0 4px}
+.paper.export .calfill,.paper.export .wkadd{display:none}
+.paper table.cal{table-layout:fixed}
+.paper table.cal th{text-align:center;font-size:12.5px;padding:5px 2px}
+.paper table.cal th:first-child,.paper table.cal td:first-child .dnum{color:#d9534f}
+.paper table.cal th:last-child,.paper table.cal td:last-child .dnum{color:#4f84c4}
+.paper table.cal td{height:78px;vertical-align:top;font-size:12px;line-height:1.4;padding:4px 5px;overflow-wrap:anywhere;word-break:normal}
+.paper table.cal td.off{background:#fafaf8}
+.paper table.cal td.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.paper .dnum{display:block;font-weight:700;font-size:12.5px;min-height:17px;font-family:var(--ui);user-select:none}
+.paper .wk{margin:4px 0 18px}
+.paper .wk h3{color:var(--accent)}
+.paper table.habit{table-layout:fixed}
+.paper table.habit th{text-align:center;font-size:12.5px;padding:5px 2px}
+.paper table.habit th:first-child{text-align:left;padding-left:10px}
+.paper table.habit td[data-done]{text-align:center;cursor:pointer;user-select:none;padding:4px 0;position:relative}
+.paper table.habit td[data-done]::after{content:"";display:inline-block;width:16px;height:16px;border-radius:50%;border:1.6px solid #cfcbd6;vertical-align:middle}
+.paper table.habit td[data-done="true"]::after{content:"✓";border-color:var(--accent);background:var(--accent);color:#fff;font-size:11px;line-height:14px;font-weight:700;font-family:var(--ui)}
+@media (max-width:760px){
+  .paper table.cal td{height:56px;font-size:10px;padding:2px 3px}
+  .paper .dnum{font-size:11px;min-height:14px}
+  .paper .calttl{font-size:17px}
+  .paper table.habit th{font-size:11px}
+}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -717,9 +746,72 @@ ${meta([['제목', null], ['감독 / 출연', null], ['본 날짜', today()], ['
 <h2>다시 보고 싶은 포인트</h2>
 <ul><li>${E}</li></ul>` },
 });
+/* ---- v1.9 보완: 덕질 일기 · 감상 기록 · 만년 다이어리 ---- */
+const multiPick = (cls, labels) => pickHTML(cls + ' multi', labels.map(l => [l, false]));
+const moneyFoot = (html, cells) => html.replace('</tbody></table>', `</tbody><tfoot><tr>${cells}</tr></tfoot></table>`);
+function calHTML() {
+  let h = '<div class="calhead"><span class="calttl">____년 __월</span><span class="calfill" contenteditable="false">📅 날짜 채우기</span></div>';
+  h += '<table class="cal"><thead><tr>' + ['일', '월', '화', '수', '목', '금', '토'].map(d => `<th>${d}</th>`).join('') + '</tr></thead><tbody>';
+  for (let r = 0; r < 6; r++) h += '<tr>' + '<td><span class="dnum" contenteditable="false"></span><br></td>'.repeat(7) + '</tr>';
+  return h + '</tbody></table>';
+}
+const habitHTML = () => '<table class="habit"><thead><tr><th style="width:30%">습관</th>' + DAYS.map(d => `<th>${d}</th>`).join('') + '</tr></thead><tbody>'
+  + ['💧 물 마시기', '📖 책 읽기', '<br>'].map(n => `<tr><td>${n}</td>` + '<td contenteditable="false" data-done="false"></td>'.repeat(7) + '</tr>').join('') + '</tbody></table>';
+const weekHTML = n => `<div class="wk"><h3>${n}주차 · __/__ ~ __/__</h3>
+${tbl('', [['요일', 10], ['날짜', 12], '일정 · 할 일', ['메모', 26]], DAYS.map(d => [d, null, null, null]))}
+<p><b>습관 체크</b></p>
+${habitHTML()}</div>`;
+Object.assign(TPL, {
+  fan: { name: '덕질 일기', icon: '💖', desc: '아이돌·음악 · 무대 기록 · 오늘의 노래 · 덕질 소비', color: '#ee93b3', accent: '#e0628f', paper: 'dot',
+    html: () => `<h1>💖 덕질 일기</h1>
+${meta([['날짜', today()], ['최애', null], ['오늘의 덕질', multiPick('fkind', ['📺 음방·무대', '🎤 콘서트·공연', '✍️ 팬싸·팬미', '💿 앨범·음원', '📸 자컨·라이브', '🛍 굿즈·포카'])], ['기분', pickHTML('mood', [['😍 행복', true], ['🥹 감동'], ['🔥 설렘'], ['😭 오열'], ['😴 피곤']])]])}
+<h2>✨ 오늘의 떡밥</h2>
+<ul><li>${E}</li></ul>
+<h2>🎤 무대 · 공연 기록</h2>
+${tbl('', [['곡', 22], ['어디서', 20], '킬링 포인트 · 감상'], blankRows(2, 3))}
+<h2>🎵 오늘의 노래</h2>
+${tbl('', [['곡', 24], ['앨범 · 아티스트', 26], '좋은 구간 · 한 줄 평'], blankRows(2, 3))}
+<h2>🎬 명장면 · 명대사</h2>
+<blockquote>${E}</blockquote>
+<div class="callout">📸 캡처는 ${FINE ? 'Ctrl+V' : '「🖼 사진」'}로 바로 붙이고, 「✨ 스티커」로 꾸며 보세요.</div>
+<h2>🛍 덕질 소비 기록</h2>
+${moneyFoot(tbl('money', ['항목', ['분류', 18], ['금액', 18, 'sum'], ['메모', 26]], blankRows(3, 4)), '<th>합계</th><td></td><td>0</td><td></td>')}
+<h2>📅 다가오는 일정</h2>
+${checks(3)}
+<h2>💌 최애에게 하고 싶은 말</h2>
+<p>${E}</p>` },
+  review: { name: '감상 기록', icon: '🎬', desc: '영화·드라마·예능·음악 · 회차 기록 · 별점', color: '#3d4a6b', accent: '#4a5a8a', paper: 'blank',
+    html: () => `<h1>🎬 감상 기록</h1>
+${meta([['제목', null], ['종류', pickHTML('vkind', [['🎬 영화', true], ['📺 드라마'], ['😂 예능'], ['🎵 음악·앨범'], ['🎞 애니'], ['📹 기타']])], ['회차 · 트랙', null], ['출연 · 아티스트', null], ['본 날짜', today()], ['어디서', null], ['별점', STARS()]])}
+<h2>📝 회차 · 트랙 기록</h2>
+${tbl('', [['회차·트랙', 16], ['날짜', 15], '한 줄 메모', ['★', 14]], blankRows(3, 4))}
+<h2>🎬 명장면 · 명대사</h2>
+<blockquote>${E}</blockquote>
+<h2>😂 웃음 · 킬링 포인트</h2>
+<ul><li>${E}</li></ul>
+<h2>👥 인물 · 출연자 메모</h2>
+${tbl('', [['이름', 22], ['역할 · 캐릭터', 26], '메모'], blankRows(2, 3))}
+<h2>💭 감상평</h2>
+<p>${E}</p>
+<h2>🔁 다시 보고 싶은 포인트</h2>
+<ul><li>${E}</li></ul>` },
+  weekly: { name: '만년 다이어리', icon: '📔', desc: '먼슬리 · 위클리 · 습관 체크 · 프리메모', color: '#5fa3b5', accent: '#3f8fa6', paper: 'dot',
+    html: () => `<h1>📔 만년 다이어리</h1>
+<div class="callout">💡 날짜가 비어 있는 다이어리예요. 「📅 날짜 채우기」를 누르면 원하는 달의 날짜가 들어가요.</div>
+<h2>📅 먼슬리</h2>
+${calHTML()}
+<p><b>이번 달 목표</b></p>
+${checks(3)}
+<h2>🗓 위클리</h2>
+${weekHTML(1)}
+<p class="wkaddp"><span class="wkadd" contenteditable="false">＋ 한 주 더 추가</span></p>
+<h2>📝 프리메모</h2>
+<p>${E}</p>
+<p>${E}</p>` },
+});
 const TPL_CATS = [
-  ['기본', ['blank', 'todo', 'diary']],
-  ['공부 · 업무', ['study', 'worklog', 'research', 'meeting', 'weekly', 'mandal']],
+  ['기본', ['blank', 'todo', 'diary', 'weekly']],
+  ['공부 · 업무', ['study', 'worklog', 'research', 'meeting', 'mandal']],
   ['생활', ['money', 'workout', 'travel', 'book']],
   ['취미 · 덕질', ['tarot', 'fan', 'review']],
 ];
@@ -1204,7 +1296,14 @@ paper.addEventListener('click', e => {
   if (selImg) deselectAll();
   const sb = e.target.closest && e.target.closest('.cnt .b');
   if (sb) { e.preventDefault(); stepCards(+sb.dataset.d); return; }
+  const cf = e.target.closest && e.target.closest('.calfill');
+  if (cf) { e.preventDefault(); fillCalendar(cf); return; }
+  const wa = e.target.closest && e.target.closest('.wkadd');
+  if (wa) { e.preventDefault(); addWeek(wa); return; }
+  const hb = e.target.closest && e.target.closest('table.habit td[data-done]');
+  if (hb) { e.preventDefault(); hb.dataset.done = hb.dataset.done === 'true' ? 'false' : 'true'; scheduleSave(); return; }
   const opt = e.target.closest && e.target.closest('.pick .opt');
+  if (opt && opt.parentElement.classList.contains('multi')) { e.preventDefault(); opt.dataset.on = opt.dataset.on === 'true' ? 'false' : 'true'; scheduleSave(); return; }
   if (opt) {
     e.preventDefault();
     if (opt.dataset.on !== 'true') { opt.parentElement.querySelectorAll('.opt').forEach(o => o.dataset.on = o === opt ? 'true' : 'false'); scheduleSave(); }
@@ -1297,6 +1396,43 @@ async function stepCards(d) {
   }
   scheduleSave();
 }
+async function fillCalendar(btn) {
+  const tb = btn.closest('.calhead') && btn.closest('.calhead').nextElementSibling;
+  if (!tb || !tb.classList.contains('cal')) { toast('달력을 찾을 수 없어요'); return; }
+  const now = new Date();
+  const ym = await dialog((b, done) => {
+    const y = el('input', { type: 'text', inputmode: 'numeric', value: String(now.getFullYear()), maxlength: '4', style: 'text-align:center' });
+    const m = el('input', { type: 'text', inputmode: 'numeric', value: String(now.getMonth() + 1), maxlength: '2', style: 'text-align:center' });
+    const go = () => { const yy = +y.value, mm = +m.value; if (!(yy > 1900 && yy < 2200 && mm >= 1 && mm <= 12)) { toast('연도와 월을 확인해 주세요'); return; } done([yy, mm]); };
+    m.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    b.append(el('h3', { text: '📅 어느 달로 채울까요?' }), el('p', { text: '달력 칸에 날짜 숫자만 들어가요. 적어둔 일정은 그대로 남아요.' }),
+      el('div', { style: 'display:flex;gap:10px;align-items:center' }, y, el('span', { text: '년' }), m, el('span', { text: '월' })),
+      el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '취소', onclick: () => done(null) }), el('button', { class: 'btn', text: '채우기', onclick: go })));
+  });
+  if (!ym) return;
+  const [yy, mm] = ym, first = new Date(yy, mm - 1, 1).getDay(), last = new Date(yy, mm, 0).getDate();
+  const cells = [...tb.tBodies[0].rows].flatMap(r => [...r.cells]);
+  cells.forEach((td, i) => {
+    let dn = td.querySelector('.dnum');
+    if (!dn) { dn = el('span', { class: 'dnum', contenteditable: 'false' }); td.prepend(dn); }
+    const d = i - first + 1;
+    dn.textContent = d >= 1 && d <= last ? String(d) : '';
+    td.classList.toggle('off', !(d >= 1 && d <= last));
+    td.classList.toggle('today', yy === now.getFullYear() && mm === now.getMonth() + 1 && d === now.getDate());
+  });
+  const ttl = btn.closest('.calhead').querySelector('.calttl'); if (ttl) ttl.textContent = `${yy}년 ${mm}월`;
+  scheduleSave(); toast(`${yy}년 ${mm}월 날짜를 채웠어요`);
+}
+function addWeek(btn) {
+  const wks = paper.querySelectorAll('.wk'); const last = wks[wks.length - 1];
+  if (!last) return;
+  const nw = last.cloneNode(true);
+  nw.querySelectorAll('table:not(.habit) tbody tr').forEach(tr => [...tr.cells].forEach((td, i) => { if (i > 0) td.innerHTML = '<br>'; }));
+  nw.querySelectorAll('table.habit td[data-done]').forEach(td => td.dataset.done = 'false');
+  const h = nw.querySelector('h3'); if (h) h.textContent = `${wks.length + 1}주차 · __/__ ~ __/__`;
+  last.after(nw);
+  scheduleSave(); toast(`${wks.length + 1}주차를 추가했어요`);
+}
 const CMD = {
   h1: () => ex('formatBlock', 'H1'), h2: () => ex('formatBlock', 'H2'), p: () => ex('formatBlock', 'P'),
   bold: () => ex('bold'), italic: () => ex('italic'), underline: () => ex('underline'), strike: () => ex('strikeThrough'),
@@ -1353,8 +1489,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const CHANGELOG = [
+  { v: '1.9', d: '11월 9일', items: ['💖 덕질 일기 보완: 덕질 종류 여러 개 선택, 무대·공연 기록, 오늘의 노래, 소비 자동 합계, 다가오는 일정', '🎬 감상 기록: 영화·드라마에 예능·음악까지, 회차·트랙 기록과 출연자 메모', '📔 만년 다이어리: 먼슬리 달력(날짜 채우기), 주차별 위클리, 습관 체크, 프리메모'] },
   { v: '1.8', d: '11월 8일', items: ['업데이트 소식을 이렇게 배너로 알려드려요', '앱을 켜둔 사이에 새 버전이 나오면 바로 적용할 수 있어요'] },
   { v: '1.7', d: '11월 8일', items: ['📲 다른 기기로 옮기기: 카톡 「나와의 채팅」으로 파일 하나만 보내면 끝', '여러 번 옮겨도 더 최근에 고친 메모가 남아요'] },
   { v: '1.6', d: '11월 8일', items: ['🐰 앱 이름이 「담노트 DAM:NOTE」로 바뀌었어요'] },
@@ -1568,7 +1705,7 @@ async function inlineImages(html) {
 function toPlain(root) {
   const out = [];
   const t = n => {
-    if (n.querySelector && n.querySelector('.pick,.cnt')) { const c = n.cloneNode(true); flattenPicks(c, false); n = c; return (c.textContent || '').replace(/ /g, ' ').trim(); }
+    if (n.querySelector && n.querySelector('.pick,.cnt,.calfill,.wkadd,td[data-done],.dnum')) { const c = n.cloneNode(true); flattenPicks(c, false); n = c; return (c.textContent || '').replace(/ /g, ' ').trim(); }
     return (n.innerText || n.textContent || '').replace(/ /g, ' ').trim();
   };
   const walk = node => {
@@ -1586,7 +1723,12 @@ function toPlain(root) {
           const s = t(li); if (!s && !chk) return;
           out.push((chk ? (li.dataset.done === 'true' ? '☑ ' : '☐ ') : tag === 'OL' ? `${i + 1}. ` : '• ') + s);
         });
-      } else if (tag === 'TABLE') { if (n.classList.contains('mandal')) out.push(...mandalPlain(n)); else tableText(n); }
+      } else if (tag === 'TABLE') {
+        if (n.classList.contains('mandal')) out.push(...mandalPlain(n));
+        else if (n.classList.contains('cal')) { [...n.tBodies[0].rows].flatMap(r => [...r.cells]).forEach(td => { const d = (td.querySelector('.dnum') || {}).textContent || ''; const c = td.cloneNode(true); c.querySelectorAll('.dnum').forEach(x => x.remove()); const memo = c.textContent.replace(/\u00a0/g, ' ').trim(); if (memo) out.push(`${d ? d + '일' : '·'} ${memo}`); }); }
+        else if (n.classList.contains('habit')) { const hd = [...n.tHead.rows[0].cells].map(t); [...n.tBodies[0].rows].forEach(r => { const name = t(r.cells[0]); if (!name) return; out.push(`${name}: ` + [...r.cells].slice(1).map((c, i) => `${hd[i + 1]}${c.dataset.done === 'true' ? '✓' : '·'}`).join(' ')); }); }
+        else tableText(n);
+      }
       else if (tag === 'BLOCKQUOTE') { const s = t(n); if (s) out.push('“' + s + '”'); }
       else if (tag === 'HR') out.push('──────────');
       else if (tag === 'BR') out.push('');
@@ -1610,6 +1752,15 @@ function toPlain(root) {
 const OPT_COLOR = o => o.classList.contains('rev') ? '#d9534f' : o.classList.contains('ok') ? '#3f9a74' : o.classList.contains('hold') ? '#8b8894' : null;
 function flattenPicks(root, styled, accent = '#7a62c9') {
   root.querySelectorAll('.cnt').forEach(c => { const v = c.querySelector('.v'); c.replaceWith(document.createTextNode((v ? v.textContent : '') + '장 ')); });
+  root.querySelectorAll('.calfill,.wkadd').forEach(x => x.remove());
+  root.querySelectorAll('table.habit td[data-done]').forEach(td => { td.textContent = td.dataset.done === 'true' ? '✓' : ''; });
+  root.querySelectorAll('.pick.multi').forEach(pk => {
+    const ons = [...pk.querySelectorAll('.opt[data-on="true"]')];
+    if (!styled) { pk.replaceWith(document.createTextNode(ons.map(o => o.textContent).join(', '))); return; }
+    const wrap = document.createElement('span');
+    ons.forEach(o => { const s = document.createElement('span'); s.textContent = o.textContent; s.style.cssText = `display:inline-block;padding:1px 9px;margin:0 4px 2px 0;border-radius:999px;font-size:13px;font-weight:700;color:#fff;background:${accent}`; wrap.append(s); });
+    pk.replaceWith(wrap);
+  });
   root.querySelectorAll('.pick').forEach(pk => {
     const on = pk.querySelector('.opt[data-on="true"]');
     const label = on ? on.textContent : '';
