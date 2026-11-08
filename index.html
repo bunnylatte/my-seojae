@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="메모 서재">
+<meta name="format-detection" content="telephone=no">
 <title>메모 서재</title>
 <meta name="theme-color" content="#5a67e8">
 <meta name="description" content="템플릿으로 정리하는 나만의 메모장">
@@ -26,7 +31,10 @@ input,select{font:inherit;color:inherit}
 [hidden]{display:none!important}
 
 /* ---------- layout ---------- */
-#app{display:grid;grid-template-columns:250px 1fr;height:100vh}
+#app{display:grid;grid-template-columns:250px 1fr;height:100vh;height:100dvh}
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+.m-only{display:none!important}
+#scrim{display:none}
 #side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 14px;overflow:auto}
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-weight:700;font-size:17px}
 .brand .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#7b86f0,#5a67e8);display:grid;place-items:center;color:#fff;font-size:15px}
@@ -237,14 +245,108 @@ input,select{font:inherit;color:inherit}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#2b2a33;color:#fff;padding:11px 18px;border-radius:12px;z-index:60;font-size:13px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4);max-width:90vw}
 #stage{position:fixed;left:-12000px;top:0;pointer-events:none}
 
+/* ---------- 모바일 ---------- */
+#chips{display:none}
 @media (max-width:760px){
-  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  #side{flex-direction:row;flex-wrap:wrap;padding:10px;gap:4px;border-right:0;border-bottom:1px solid var(--line)}
-  .brand,.sec-label,.side-foot{display:none}
-  #lib{padding:18px}
-  .paper{padding:32px 24px}
-  .search{width:100%}
+  .m-only{display:revert!important}
+  .m-hide{display:none!important}
+  #app{grid-template-columns:1fr}
+  #side{position:fixed;inset:0 auto 0 0;width:min(300px,86vw);z-index:36;transform:translateX(-105%);transition:transform .22s ease;
+    padding:calc(18px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));box-shadow:0 0 40px rgba(0,0,0,.18)}
+  body.drawer #side{transform:none}
+  body.drawer #scrim{display:block;position:fixed;inset:0;background:rgba(30,28,36,.35);z-index:35}
+  .fitem{padding:11px 10px}
+  .fitem .acts{display:flex}
+  .fitem .ct{display:none}
+  .fitem .acts button{width:30px;height:30px;font-size:14px}
+  #lib{padding:calc(12px + env(safe-area-inset-top)) 14px calc(110px + env(safe-area-inset-bottom))}
+  .lib-head{gap:10px;margin-bottom:12px;flex-wrap:nowrap}
+  .lib-head h1{font-size:20px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #menuBtn{display:inline-grid!important;place-items:center;width:40px;height:40px;border-radius:10px;font-size:20px;flex:none}
+  #menuBtn:active{background:#e4e1db}
+  .lib-head .search{display:none}
+  #mSearch{display:flex!important;width:100%;margin-bottom:12px}
+  .search input{font-size:16px}
+  #newBtn{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;padding:0;justify-content:center;z-index:20;
+    font-size:0;box-shadow:0 10px 24px -6px rgba(90,103,232,.6)}
+  #newBtn::before{content:"＋";font-size:30px;line-height:1}
+  body.editing #newBtn{display:none}
+  #chips{display:flex;gap:6px;overflow-x:auto;margin:0 -14px 16px;padding:2px 14px;scrollbar-width:none}
+  #chips::-webkit-scrollbar{display:none}
+  #chips button{flex:none;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13.5px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+  #chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  #chips button i{width:8px;height:8px;border-radius:3px;display:inline-block}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:22px 14px}
+  .cover .lbl{left:16px;right:8px;padding:8px 6px}
+  .cover .lbl .ic{font-size:18px}
+  .cover .lbl .t{font-size:11.5px}
+  .nb .name{font-size:13px}
+  .nb .more{width:30px;height:30px}
+  .newcard{display:none}
+  .banner{font-size:12.5px}
+
+  .ebar{padding:calc(8px + env(safe-area-inset-top)) 8px 8px;gap:4px;flex-wrap:nowrap}
+  .ebar .back{padding:0 8px;height:38px;flex:none}
+  .ebar .title{font-size:16px;min-width:0;padding:6px 6px}
+  #moreBtn{display:inline-grid!important;place-items:center;width:40px;height:38px;border-radius:9px;font-size:20px;flex:none;color:var(--ink)}
+  #moreBtn:active{background:#e4e1db}
+  .tools{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding:6px 8px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tools::-webkit-scrollbar{display:none}
+  .tools button{flex:none;height:36px;min-width:36px;font-size:13.5px;white-space:nowrap}
+  .desk{padding:10px 6px calc(90px + env(safe-area-inset-bottom))}
+  .paper{padding:26px 16px 40px;font-size:15.5px;min-height:75vh;border-radius:6px}
+  .paper h1{font-size:21px}
+  .paper h2{font-size:16.5px;margin-top:22px}
+  .paper th,.paper td{padding:6px 7px}
+  .paper table.meta th{width:28%;white-space:normal}
+  .paper table.mandal td{height:40px;font-size:9.5px;padding:1px;line-height:1.2}
+  .paper table.mandal tr:nth-child(5) td:nth-child(5){font-size:10.5px}
+  .paper .stk .h{width:28px;height:28px}
+  .paper .stk .h.rs{right:-18px;bottom:-18px}
+  .paper .stk .h.del{right:-18px;top:-18px;font-size:13px;line-height:24px}
+  .paper .stk .h.rt{top:-44px;margin-left:-14px}
+  .paper .stk .h.rt::after{left:11px;top:26px}
+  .paper ul.check li{padding-left:32px}
+  .paper ul.check li::before{width:19px;height:19px;top:.3em}
+  .paper ul.check li[data-done="true"]::after{left:9px;top:calc(.3em + 4px)}
+
+  .overlay{place-items:end stretch;padding:0}
+  .dlg,.dlg.wide{width:100%;max-width:none;border-radius:20px 20px 0 0;max-height:92dvh;overflow:auto;padding:22px 16px calc(18px + env(safe-area-inset-bottom))}
+  .dlg input[type=text],.dlg textarea{font-size:16px}
+  .dlg .row{position:sticky;bottom:-1px;background:#fff;padding-top:10px}
+  .dlg .row .btn{flex:1;justify-content:center;height:46px}
+  .tgrid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .tcard{padding:10px}
+  .tcard .sw{height:54px;font-size:24px}
+  .tbody,.pgrid{max-height:none}
+  .pgrid{grid-template-columns:repeat(2,1fr)}
+  .ttabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .ttabs button{flex:none}
+  .menu{max-width:calc(100vw - 16px);max-height:70dvh;overflow:auto}
+  .menu button.mi{padding:12px 10px}
+  .menu.stkpanel{width:calc(100vw - 16px)}
+  .stkpanel .eg button{height:44px;font-size:24px}
+  #imgbar{flex-wrap:wrap;max-width:calc(100vw - 16px);justify-content:center}
+  #imgbar button{height:36px}
+  .toast{bottom:calc(92px + env(safe-area-inset-bottom));font-size:13px;text-align:center}
+  .side-foot .bk button{padding:10px}
 }
+/* ---------- 첫 실행 안내 · 의견 ---------- */
+.ob{text-align:center;padding:6px 4px 0}
+.ob .big{font-size:52px;line-height:1;margin:6px 0 14px}
+.ob h3{font-size:20px;margin-bottom:10px}
+.ob p{color:#5d5a66;line-height:1.75;margin:0 auto 6px;max-width:420px;word-break:keep-all}
+.ob ul{text-align:left;max-width:400px;margin:10px auto 0;padding-left:20px;color:#5d5a66;line-height:1.8}
+.ob .tip{background:#f6f4ff;border:1px solid #e3e0fb;color:#4a4590;border-radius:12px;padding:10px 14px;margin:14px auto 0;max-width:420px;text-align:left;font-size:13.5px;line-height:1.7}
+.dots{display:flex;gap:6px;justify-content:center;margin:18px 0 4px}
+.dots i{width:7px;height:7px;border-radius:50%;background:#d9d6df}
+.dots i.on{background:var(--accent);width:20px;border-radius:4px}
+.dlg textarea{width:100%;min-height:140px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;outline:0;resize:vertical;margin-top:8px}
+.dlg textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fbk{display:flex;gap:6px;flex-wrap:wrap}
+.fbk button{height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px}
+.fbk button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ver{font-size:11px;color:#b3b0ba;margin-top:6px}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -259,6 +361,7 @@ input,select{font:inherit;color:inherit}
 </head>
 <body>
 <div id="app">
+  <div id="scrim"></div>
   <aside id="side">
     <div class="brand"><div class="logo">✎</div>메모 서재</div>
     <div id="fixedNav"></div>
@@ -266,17 +369,21 @@ input,select{font:inherit;color:inherit}
     <div id="folderNav"></div>
     <button class="addf" id="addFolder">＋ 새 폴더</button>
     <div class="side-foot">
-      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
+      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
       <input type="file" id="bkFile" accept=".json,application/json" hidden>
       <div class="st" id="storeState"><i></i><span>불러오는 중…</span></div>
+      <div class="ver" id="verLabel"></div>
     </div>
   </aside>
   <main id="lib">
     <div class="lib-head">
+      <button id="menuBtn" class="m-only" title="메뉴" aria-label="메뉴">☰</button>
       <h1 id="libTitle">전체 메모</h1>
       <label class="search">🔍<input id="q" type="search" placeholder="메모 검색"></label>
       <button class="btn" id="newBtn">＋ 새 메모</button>
     </div>
+    <label class="search m-only" id="mSearch">🔍<input id="q2" type="search" placeholder="메모 검색"></label>
+    <div id="chips"></div>
     <div id="banner"></div>
     <div class="grid" id="shelf"></div>
   </main>
@@ -286,17 +393,18 @@ input,select{font:inherit;color:inherit}
   <div class="ebar">
     <button class="back" id="backBtn">‹ 서재</button>
     <input class="title" id="eTitle" placeholder="제목 없음" maxlength="80">
-    <span class="saved" id="savedState"></span>
-    <select id="eFolder" title="폴더"></select>
-    <select id="ePaper" title="속지">
+    <span class="saved m-hide" id="savedState"></span>
+    <select id="eFolder" class="m-hide" title="폴더"></select>
+    <select id="ePaper" class="m-hide" title="속지">
       <option value="blank">속지: 무지</option>
       <option value="lined">속지: 줄노트</option>
       <option value="grid-p">속지: 모눈</option>
       <option value="dot">속지: 도트</option>
     </select>
-    <button class="sbtn" id="copyBtn">📋 복사 ▾</button>
-    <button class="sbtn" id="tplSaveBtn">⭐ 템플릿으로 저장</button>
-    <button class="sbtn pri" id="pdfBtn">⬇ PDF</button>
+    <button class="sbtn m-hide" id="copyBtn">📋 복사 ▾</button>
+    <button class="sbtn m-hide" id="tplSaveBtn">⭐ 템플릿으로 저장</button>
+    <button class="sbtn pri m-hide" id="pdfBtn">⬇ PDF</button>
+    <button id="moreBtn" class="m-only" title="더보기" aria-label="더보기">⋯</button>
   </div>
   <div class="tools" id="tools">
     <button data-c="h1" title="큰 제목"><b>제목1</b></button>
@@ -705,6 +813,7 @@ async function init() {
   try { if (navigator.storage && navigator.storage.persist) S.persisted = await navigator.storage.persist(); } catch {}
   upgradeAllTarot();
   renderAll();
+  if (!S.loadError && !S.meta.onboarded) setTimeout(onboarding, 300);
 }
 const saveMeta = () => queueWrite('meta', S.meta);
 const saveFolders = () => queueWrite('folders', { list: S.folders });
@@ -721,7 +830,7 @@ function counts() {
   }
   return c;
 }
-function renderAll() { renderSide(); renderLib(); }
+function renderAll() { renderSide(); renderLib(); renderChips(); }
 function renderSide() {
   const c = counts();
   const fixed = $('#fixedNav'); fixed.replaceChildren();
@@ -745,7 +854,7 @@ function navItem(id, icon, name, count, color) {
     icon ? el('span', { text: icon }) : el('span', { class: 'dot', style: `background:${color}` }),
     el('span', { class: 'nm', text: name }),
     el('span', { class: 'ct', text: String(count) }));
-  n.addEventListener('click', () => { S.view = id; renderAll(); });
+  n.addEventListener('click', () => { S.view = id; document.body.classList.remove('drawer'); renderAll(); });
   if (id !== 'all') {
     n.addEventListener('dragover', e => { e.preventDefault(); n.classList.add('drop'); });
     n.addEventListener('dragleave', () => n.classList.remove('drop'));
@@ -792,7 +901,7 @@ const stripText = h => (h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' '
 function tplOf(n) { return TPL[n.tpl] || TPL.blank; }
 function noteCard(id, n) {
   const t = tplOf(n);
-  const card = el('div', { class: 'nb', draggable: 'true' },
+  const card = el('div', FINE ? { class: 'nb', draggable: 'true' } : { class: 'nb' },
     el('div', { class: 'cover', style: `--c:${n.color || t.color}` },
       el('div', { class: 'lbl' }, el('div', { class: 'ic', text: n.icon || t.icon }), el('div', { class: 't', text: n.title || '제목 없음' }))),
     el('div', { class: 'meta' },
@@ -814,8 +923,8 @@ function showMenu(anchor, build) {
   let x = Math.min(r.left, innerWidth - mw - 10), y = r.bottom + 6;
   if (y + mh > innerHeight - 10) y = Math.max(10, r.top - mh - 6);
   m.style.left = Math.max(10, x) + 'px'; m.style.top = y + 'px';
-  setTimeout(() => document.addEventListener('mousedown', outside, { once: true }), 0);
-  function outside(e) { if (openMenuEl && !openMenuEl.contains(e.target)) closeMenu(); else if (openMenuEl) document.addEventListener('mousedown', outside, { once: true }); }
+  setTimeout(() => document.addEventListener('pointerdown', outside, { once: true }), 0);
+  function outside(e) { if (openMenuEl && !openMenuEl.contains(e.target)) closeMenu(); else if (openMenuEl) document.addEventListener('pointerdown', outside, { once: true }); }
 }
 const mi = (label, fn, cls = '') => el('button', { class: 'mi ' + cls, onclick: () => { closeMenu(); fn(); } }, label);
 
@@ -970,7 +1079,7 @@ function openNote(id) {
   applyPaper(paper, n);
   paper.innerHTML = sanitize(n.html || '<p><br></p>', true);
   hydrate(paper);
-  $('#editor').hidden = false; savedUI();
+  $('#editor').hidden = false; document.body.classList.add('editing'); savedUI();
   $('#desk').scrollTop = 0;
   setTimeout(() => { if (!n.title && n.tpl === 'blank') $('#eTitle').focus(); else placeCaret(); }, 30);
 }
@@ -983,7 +1092,7 @@ function placeCaret() {
   const target = paper.querySelector('table.meta td:not(:first-child)') ? null : paper.lastElementChild;
   if (target) { const r = document.createRange(); r.selectNodeContents(target); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
 }
-function closeEditor() { deselectAll(); commit(); S.openId = null; $('#editor').hidden = true; renderAll(); }
+function closeEditor() { deselectAll(); commit(); S.openId = null; $('#editor').hidden = true; document.body.classList.remove('editing'); renderAll(); }
 function scheduleSave() { syncCounts(); computeSums(); clearTimeout(saveT); $('#savedState').textContent = '입력 중…'; saveT = setTimeout(commit, 700); }
 function commit() {
   clearTimeout(saveT); saveT = null;
@@ -1067,7 +1176,7 @@ document.addEventListener('keydown', e => {
   if (selStk && !$('#editor').hidden && !e.isComposing && !e.ctrlKey && !e.metaKey && !document.querySelector('.overlay')) {
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); selStk.remove(); selStk = null; scheduleSave(); }
     else if (e.key.startsWith('Arrow')) { e.preventDefault(); const d = e.shiftKey ? 10 : 2; const s = selStk;
-      if (e.key === 'ArrowLeft') s.style.left = (s.offsetLeft - d) + 'px'; if (e.key === 'ArrowRight') s.style.left = (s.offsetLeft + d) + 'px';
+      if (e.key === 'ArrowLeft') s.style.left = pct(s.offsetLeft - d); if (e.key === 'ArrowRight') s.style.left = pct(s.offsetLeft + d);
       if (e.key === 'ArrowUp') s.style.top = (s.offsetTop - d) + 'px'; if (e.key === 'ArrowDown') s.style.top = (s.offsetTop + d) + 'px'; scheduleSave(); }
     else if (e.key.length === 1) deselectAll();
   }
@@ -1149,6 +1258,7 @@ const CMD = {
   },
 };
 $('#tools').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+$('#tools').addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' && e.target.closest('button')) e.preventDefault(); });
 $('#tools').addEventListener('click', e => {
   const b = e.target.closest('button[data-c]'); if (!b) return;
   const c = b.dataset.c;
@@ -1174,6 +1284,11 @@ $('#tools').addEventListener('click', e => {
 
 /* ---------------- images & stickers ---------------- */
 const PAPER_INNER = 666;
+const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
+const FINE = matchMedia('(pointer:fine)').matches;
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const APP_VERSION = '1.4';
 let selStk = null, selImg = null, photoRange = null;
 function cleanPaperHTML(src = paper) {
   const c = src.cloneNode(true);
@@ -1259,7 +1374,7 @@ function addSticker(inner, w, pos, extra = '') {
     y = Math.max(20, desk.scrollTop + desk.clientHeight * 0.4 - paper.offsetTop - w / 2 + (Math.random() * 40 - 20));
     x = paper.clientWidth / 2 - w / 2 + (Math.random() * 80 - 40);
   }
-  const s = el('div', { class: 'stk' + (inner.tagName === 'IMG' ? ' pic' : '') + (extra ? ' ' + extra : ''), contenteditable: 'false', style: `left:${Math.round(x)}px;top:${Math.round(y)}px` });
+  const s = el('div', { class: 'stk' + (inner.tagName === 'IMG' ? ' pic' : '') + (extra ? ' ' + extra : ''), contenteditable: 'false', style: `left:${pct(x)};top:${Math.round(y)}px` });
   s.append(inner); paper.append(s); setStkWidth(s, w);
   selectSticker(s); scheduleSave(); return s;
 }
@@ -1290,7 +1405,7 @@ paper.addEventListener('pointerdown', e => {
     moved = true;
     const dx = ev.clientX - st.x, dy = ev.clientY - st.y;
     if (mode === 'mv') {
-      s.style.left = Math.round(Math.min(paper.clientWidth - st.w * 0.3, Math.max(-st.w * 0.7, st.l + dx))) + 'px';
+      s.style.left = pct(Math.min(paper.clientWidth - st.w * 0.3, Math.max(-st.w * 0.7, st.l + dx)));
       s.style.top = Math.round(Math.max(-st.w * 0.5, st.t + dy)) + 'px';
     } else if (mode === 'rs') {
       setStkWidth(s, Math.round(Math.max(28, Math.min(720, st.w * Math.hypot(ev.clientX - cx, ev.clientY - cy) / st.d))));
@@ -1317,6 +1432,7 @@ function posImgBar() {
 $('#desk').addEventListener('scroll', posImgBar);
 window.addEventListener('resize', posImgBar);
 $('#imgbar').addEventListener('mousedown', e => e.preventDefault());
+$('#imgbar').addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') e.preventDefault(); });
 $('#imgbar').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || !selImg) return;
   const img = selImg, a = b.dataset.a;
@@ -1495,9 +1611,10 @@ function plainWithTitle() {
 async function copyRich() {
   commit();
   const n = S.notes[S.openId];
-  const html = await inlineImages(toRich(paper, n.accent || tplOf(n).accent, n.title)), text = plainWithTitle();
+  const text = plainWithTitle();
+  const htmlP = inlineImages(toRich(paper, n.accent || tplOf(n).accent, n.title)).then(h => new Blob([h], { type: 'text/html' }));
   try {
-    await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+    await navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlP, 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
     toast('서식 그대로 복사했어요 (노션·워드·메일 등에 붙여넣기)');
   } catch {
     try { await navigator.clipboard.writeText(text); toast('서식 복사가 막혀 있어 텍스트로 복사했어요'); }
@@ -1606,10 +1723,11 @@ function slicePages(full, k, info, ratio, side = 0) {
   });
 }
 const canvasBlob = cv => new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('blob')), 'image/png'));
-async function copyBlob(blob, name) {
-  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('복사했어요. SNS·카톡에서 Ctrl+V 하세요'); }
-  catch { await saveFile(name, blob); }
+async function copyBlob(blobOrPromise, name) {
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobOrPromise })]); toast(FINE ? '복사했어요. SNS·카톡에서 Ctrl+V 하세요' : '복사했어요. 붙여넣을 곳을 길게 눌러 붙여넣기 하세요'); }
+  catch { await saveFile(name, await blobOrPromise); }
 }
+const canShareFiles = () => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/png' })], 'a.png', { type: 'image/png' })] })); } catch { return false; } };
 const SIDE = 36;
 const RATIOS = [['인스타 피드 4:5', 1.25], ['정사각형 1:1', 1], ['스토리 9:16', 16 / 9], ['한 장으로 길게', 0]];
 async function copyImage() {
@@ -1625,7 +1743,7 @@ async function copyImage() {
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const base = fileBase();
   dialog((b, done) => {
-    b.append(el('h3', { text: '이미지로 내보내기' }), el('p', { text: '길면 SNS 크기에 맞춰 여러 장으로 나눠요. 문장·표 줄 중간은 자르지 않아요. 이미지를 눌러 한 장씩 복사하거나 한 번에 저장하세요.' }));
+    b.append(el('h3', { text: '이미지로 내보내기' }), el('p', { text: canShareFiles() ? '길면 SNS 크기에 맞춰 여러 장으로 나눠요. 「📤 공유」를 누르면 인스타·카톡 등으로 여러 장을 한 번에 보낼 수 있어요.' : '길면 SNS 크기에 맞춰 여러 장으로 나눠요. 문장·표 줄 중간은 자르지 않아요. 한 장씩 복사하거나 한 번에 저장하세요.' }));
     const tabs = el('div', { class: 'ttabs' }), grid = el('div', { class: 'pgrid' }), foot = el('div', { class: 'row' });
     let cur = [];
     const show = i => {
@@ -1639,13 +1757,20 @@ async function copyImage() {
         grid.append(el('div', { class: 'pcard' + (r ? '' : ' long') }, im,
           el('div', { class: 'pbar' },
             el('span', { text: cur.length > 1 ? `${n + 1} / ${cur.length}` : `${cv.width}×${cv.height}` }),
-            el('button', { text: '복사', onclick: async () => copyBlob(await canvasBlob(cv), name) }),
+            el('button', { text: '복사', onclick: () => copyBlob(canvasBlob(cv), name) }),
             el('button', { text: '저장', onclick: async () => saveFile(name, await canvasBlob(cv)) }))));
       });
+      if (canShareFiles()) prepFiles(cur);
       if (!r && full.height > 4000) grid.prepend(el('div', { class: 'banner', text: '길이가 길어서 SNS에 올리면 흐리게 보이거나 잘릴 수 있어요. 나눠서 올리는 걸 추천해요.' }));
     };
     RATIOS.forEach(([n], i) => tabs.append(el('button', { text: n, onclick: () => show(i) })));
-    foot.append(el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() }),
+    const shareBtn = el('button', { class: 'btn', text: '📤 공유', onclick: async () => {
+      if (!files) { toast('준비 중이에요. 잠시 후 다시 눌러 주세요'); return; }
+      try { await navigator.share({ files, title: base }); } catch (e) { if (e && e.name !== 'AbortError') toast('공유하지 못했어요. 저장 후 올려 주세요'); }
+    } });
+    let files = null;
+    const prepFiles = async list => { files = null; const fs = []; for (let n = 0; n < list.length; n++) fs.push(new File([await canvasBlob(list[n])], list.length > 1 ? `${base}_${n + 1}.png` : `${base}.png`, { type: 'image/png' })); if (list === cur) files = fs; };
+    foot.append(el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() }), ...(canShareFiles() ? [shareBtn] : []),
       el('button', { class: 'btn', text: '⬇ 모두 저장', onclick: async () => {
         for (let n = 0; n < cur.length; n++) { await saveFile(cur.length > 1 ? `${base}_${n + 1}.png` : `${base}.png`, await canvasBlob(cur[n])); await new Promise(r => setTimeout(r, 350)); }
         toast(`이미지 ${cur.length}장을 다운로드 폴더에 저장했어요`);
@@ -1746,14 +1871,162 @@ async function backupIn(file) {
   renderAll();
   toast(fail ? `${notes.length - fail}개를 불러왔고 ${fail}개는 저장하지 못했어요` : `메모 ${notes.length}개를 불러왔어요`);
 }
-$('#bkOut').addEventListener('click', backupOut);
+$('#bkOut').addEventListener('click', () => { document.body.classList.remove('drawer'); backupOut(); });
 $('#bkIn').addEventListener('click', () => $('#bkFile').click());
 $('#bkFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) backupIn(f); });
+
+/* ---------------- 모바일: 서랍 · 폴더 칩 · 더보기 ---------------- */
+function renderChips() {
+  const box = $('#chips'); if (!box) return;
+  box.replaceChildren();
+  const chip = (id, label, color) => {
+    const b = el('button', { class: S.view === id ? 'on' : '', onclick: () => { S.view = id; renderAll(); } });
+    if (color) b.append(el('i', { style: `background:${color}` }));
+    b.append(label); return b;
+  };
+  box.append(chip('all', '📚 전체'), chip('none', '📥 미분류'));
+  for (const f of S.folders) box.append(chip(f.id, f.name, f.color));
+  box.append(el('button', { text: '＋ 폴더', onclick: addFolder }));
+}
+$('#menuBtn').addEventListener('click', () => document.body.classList.add('drawer'));
+$('#scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
+$('#q2').addEventListener('input', e => { S.q = e.target.value; $('#q').value = S.q; renderLib(); });
+function chooseDialog(title, options, current) {
+  return dialog((b, done) => {
+    b.append(el('h3', { text: title }));
+    const list = el('div', { class: 'menu', style: 'position:static;box-shadow:none;border:0;padding:6px 0 0;max-height:none;width:auto;min-width:0' });
+    for (const [v, label] of options) list.append(el('button', { class: 'mi', onclick: () => done(v) }, (v === current ? '✓ ' : '') + label));
+    b.append(list, el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done(null) })));
+  });
+}
+$('#moreBtn').addEventListener('click', e => {
+  const n = S.notes[S.openId]; if (!n) return;
+  showMenu(e.currentTarget, m => {
+    m.append(
+      mi('🖼 이미지로 내보내기 (SNS)', copyImage),
+      mi('💬 텍스트로 복사 (카톡·문자)', copyPlain),
+      mi('🎨 서식 그대로 복사', copyRich),
+      mi('⬇ PDF로 저장 · 인쇄', exportPDF),
+      el('hr'),
+      mi('📁 폴더 옮기기', async () => {
+        const v = await chooseDialog('어느 폴더로 옮길까요?', [['', '📥 미분류'], ...S.folders.map(f => [f.id, '📁 ' + f.name])], S.folders.some(f => f.id === n.folder) ? n.folder : '');
+        if (v === null) return; n.folder = v; $('#eFolder').value = v; saveNote(S.openId); toast('폴더를 옮겼어요');
+      }),
+      mi('📄 속지 바꾸기', async () => {
+        const v = await chooseDialog('속지를 골라 주세요', [['blank', '무지'], ['lined', '줄노트'], ['grid-p', '모눈'], ['dot', '도트']], n.paper || 'blank');
+        if (v === null) return; n.paper = v; $('#ePaper').value = v; applyPaper(paper, n); saveNote(S.openId);
+      }),
+      mi('⭐ 템플릿으로 저장', () => $('#tplSaveBtn').click()));
+  });
+});
+
+/* ---------------- 설치 안내 ---------------- */
+function installSteps() {
+  if (IS_IOS) return ['아이폰·아이패드는 Safari에서 열어 주세요.', '아래쪽(또는 위쪽)의 공유 버튼 ⬆️ 을 눌러요.', "목록에서 「홈 화면에 추가」를 누르고 「추가」를 눌러요."];
+  if (/android/i.test(navigator.userAgent)) return ['크롬 오른쪽 위 ⋮ 메뉴를 눌러요.', "「앱 설치」 또는 「홈 화면에 추가」를 눌러요."];
+  return ['크롬·엣지 주소창 오른쪽의 설치 아이콘(🖥⬇)을 눌러요.', '또는 왼쪽 아래 「📲 앱으로 설치하기」를 눌러요.'];
+}
+function iosInstallDialog() {
+  dialog((b, done) => {
+    const ob = el('div', { class: 'ob' }, el('div', { class: 'big', text: '📲' }), el('h3', { text: '홈 화면에 추가하기' }));
+    const ul = el('ul'); installSteps().forEach(t => ul.append(el('li', { text: t }))); ob.append(ul);
+    ob.append(el('div', { class: 'tip', text: '아이폰은 홈 화면에 추가해서 쓰면 메모가 더 안전하게 보관돼요. Safari에서 오래 열지 않으면 브라우저가 저장된 데이터를 지울 수 있거든요.' }));
+    b.append(ob, el('div', { class: 'row' }, el('button', { class: 'btn', text: '확인', onclick: () => done() })));
+  });
+}
+if (IS_IOS && !IS_STANDALONE) $('#iosInstallBtn').hidden = false;
+$('#iosInstallBtn').addEventListener('click', () => { document.body.classList.remove('drawer'); iosInstallDialog(); });
+
+/* ---------------- 첫 실행 안내 ---------------- */
+function onboarding() {
+  document.body.classList.remove('drawer');
+  const slides = [
+    { big: '📚', h: '메모 서재에 오신 걸 환영해요', p: '공책을 꽂아두는 서재처럼 메모를 모아두는 나만의 메모장이에요. 자유롭게 쓰거나, 정리용 칸이 준비된 템플릿으로 바로 시작할 수 있어요.' },
+    { big: '📝', h: '템플릿으로 시작하기', p: '「＋ 새 메모」를 누르면 템플릿 16종이 나와요.', list: ['타로 정리 · 덕질 일기 · 영화 감상', '스터디 플래너 · 업무일지 · 연구노트 · 만다라트', '가계부(자동 합계) · 여행 계획 · 독서 기록 …'], tip: '직접 다듬은 양식은 「⭐ 템플릿으로 저장」으로 남겨서 계속 쓸 수 있어요.' },
+    { big: '✨', h: '사진과 스티커로 꾸미기', p: '툴바의 「🖼 사진」으로 사진을 넣고, 「✨ 스티커」로 이모지·라벨·내 사진 스티커를 붙여요.', list: ['스티커는 끌어서 옮기고, 동그라미 손잡이로 크기·방향을 바꿔요', FINE ? '화면 캡처 후 Ctrl+V 하면 바로 들어가요' : '사진을 누르면 크기 조절·삭제 메뉴가 나와요'] },
+    { big: '📤', h: '공유하고 저장하기', p: '정리한 메모를 형식 그대로 다른 곳에 보낼 수 있어요.', list: ['이미지로 내보내기: 인스타 4:5 · 스토리 크기로 자동 나눔', '텍스트로 복사: 카톡·문자에 깔끔하게', 'PDF로 저장: 인쇄 창에서 「PDF로 저장」'] },
+    { big: '🔒', h: '메모는 이 기기에만 저장돼요', p: '메모와 사진은 서버로 보내지 않고 지금 쓰는 브라우저 안에만 저장돼요. 그래서 다른 기기에서는 보이지 않아요.', list: ['「⬇ 백업 저장」으로 가끔 백업해 두세요', '다른 기기로 옮길 땐 백업 파일을 「⬆ 백업 불러오기」'], install: true },
+  ];
+  let i = 0;
+  dialog((b, done) => {
+    const body = el('div'), dots = el('div', { class: 'dots' }), row = el('div', { class: 'row' });
+    const finish = withGuide => { S.meta.onboarded = 1; saveMeta(); done(); if (withGuide) createGuideNote(); };
+    const render = () => {
+      const sl = slides[i];
+      const ob = el('div', { class: 'ob' }, el('div', { class: 'big', text: sl.big }), el('h3', { text: sl.h }), el('p', { text: sl.p }));
+      if (sl.list) { const ul = el('ul'); sl.list.forEach(t => ul.append(el('li', { text: t }))); ob.append(ul); }
+      if (sl.tip) ob.append(el('div', { class: 'tip', text: sl.tip }));
+      if (sl.install && !IS_STANDALONE) {
+        const tip = el('div', { class: 'tip' }, el('b', { text: '📲 앱처럼 설치하면 더 편해요' }));
+        const ul = el('ul', { style: 'margin:4px 0 0;padding-left:18px' }); installSteps().forEach(t => ul.append(el('li', { text: t }))); tip.append(ul);
+        if (IS_IOS) tip.append(el('div', { style: 'margin-top:6px', text: '아이폰은 홈 화면에 추가해야 메모가 오래 안전하게 보관돼요.' }));
+        ob.append(tip);
+      }
+      body.replaceChildren(ob);
+      dots.replaceChildren(...slides.map((_, j) => el('i', { class: j === i ? 'on' : '' })));
+      row.replaceChildren();
+      if (i === 0) row.append(el('button', { class: 'btn ghost', text: '건너뛰기', onclick: () => finish(false) }));
+      else row.append(el('button', { class: 'btn ghost', text: '이전', onclick: () => { i--; render(); } }));
+      if (i < slides.length - 1) row.append(el('button', { class: 'btn', text: '다음', onclick: () => { i++; render(); } }));
+      else {
+        if (!Object.values(S.notes).some(n => n.guide)) row.append(el('button', { class: 'btn ghost', text: '사용법 메모 받기', onclick: () => finish(true) }));
+        row.append(el('button', { class: 'btn', text: '시작하기', onclick: () => finish(false) }));
+      }
+    };
+    b.append(body, dots, row); render();
+  });
+}
+function createGuideNote() {
+  const id = uid('n_');
+  const kbd = FINE ? 'Ctrl+V로 캡처 붙여넣기, Ctrl+S 저장, Ctrl+P PDF' : '사진을 누르면 크기 조절·스티커로 바꾸기·삭제';
+  S.notes[id] = { title: '📘 메모 서재 사용법', tpl: 'blank', guide: 1, paper: 'lined', color: '#7ba5d6', folder: '', created: Date.now(), updated: Date.now(), html:
+`<h1>📘 메모 서재 사용법</h1>
+<p>이 메모는 마음껏 고치거나 지워도 돼요.</p>
+<h2>시작하기</h2>
+<ul class="check"><li data-done="false">「＋ 새 메모」로 템플릿 골라 보기</li><li data-done="false">폴더 만들어서 메모 정리하기</li><li data-done="false">스티커 하나 붙여 보기</li><li data-done="false">「백업 저장」 한 번 눌러 두기</li></ul>
+<h2>꾸미기</h2>
+<ul><li>툴바: 제목 · 굵게 · <mark>형광펜</mark> · 글자색 · 체크리스트 · 표 · 인용 · 박스</li><li>사진: 「🖼 사진」 버튼 또는 끌어다 놓기 (${kbd})</li><li>스티커: 끌어서 이동, 오른쪽 아래 동그라미로 크기, 위쪽 동그라미로 회전</li></ul>
+<div class="callout">💡 체크리스트는 네모 칸을 누르면 완료 표시가 돼요.</div>
+<h2>공유하기</h2>
+<table class="meta"><tbody><tr><th>이미지</th><td>SNS 크기(4:5 · 1:1 · 9:16)로 나눠 복사·저장·공유</td></tr><tr><th>텍스트</th><td>카톡·문자에 붙이기 좋은 정리된 글자</td></tr><tr><th>서식 복사</th><td>노션·워드·메일에 표·색 그대로</td></tr><tr><th>PDF</th><td>인쇄 창에서 「PDF로 저장」</td></tr></tbody></table>
+<h2>저장과 백업</h2>
+<p>메모는 이 기기의 브라우저 안에만 저장돼요. 다른 기기로 옮기거나 혹시 모를 일을 대비해 가끔 「⬇ 백업 저장」을 눌러 주세요.</p>` };
+  saveNote(id); renderAll(); openNote(id);
+}
+$('#helpBtn').addEventListener('click', onboarding);
+
+/* ---------------- 의견 보내기 ---------------- */
+const FEEDBACK_URL = 'https://github.com/bunnylatte/my-seojae/issues/new';
+function feedbackDialog() {
+  document.body.classList.remove('drawer');
+  dialog((b, done) => {
+    let kind = '💡 원하는 기능';
+    const kinds = ['💡 원하는 기능', '😣 불편한 점', '🐞 오류 신고', '💖 칭찬'];
+    const fk = el('div', { class: 'fbk' });
+    const paint = () => [...fk.children].forEach(x => x.classList.toggle('on', x.textContent === kind));
+    kinds.forEach(k => fk.append(el('button', { text: k, onclick: () => { kind = k; paint(); } }))); paint();
+    const ta = el('textarea', { placeholder: '자유롭게 적어 주세요. 어떤 화면에서 무엇을 하다가 그랬는지 알려주시면 더 빨리 고칠 수 있어요.' });
+    const env = () => `\n\n---\n버전 ${APP_VERSION} · ${IS_STANDALONE ? '설치 앱' : '브라우저'} · ${navigator.userAgent}`;
+    b.append(el('h3', { text: '💬 의견 보내기' }), el('p', { text: '써보면서 불편했던 점이나 갖고 싶은 기능을 알려주세요. 다음 업데이트에 반영할게요.' }), fk, ta,
+      el('p', { style: 'font-size:12.5px;margin:8px 0 0', text: '「보내기」를 누르면 GitHub 의견 게시판이 열리고 내용이 미리 채워져요. (GitHub 계정이 필요해요. 계정이 없으면 「내용 복사」 후 만든 사람에게 전해 주세요)' }),
+      el('div', { class: 'row' },
+        el('button', { class: 'btn ghost', text: '내용 복사', onclick: async () => { try { await navigator.clipboard.writeText(`[${kind}] ${ta.value}${env()}`); toast('복사했어요'); } catch { toast('복사가 허용되지 않았어요'); } } }),
+        el('button', { class: 'btn', text: '보내기', onclick: () => {
+          const text = ta.value.trim(); if (!text) { toast('내용을 적어 주세요'); ta.focus(); return; }
+          const title = `[${kind.replace(/^\S+\s/, '')}] ${text.split('\n')[0].slice(0, 40)}`;
+          const url = `${FEEDBACK_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(text + env())}`;
+          window.open(url, '_blank', 'noopener'); done();
+        } })));
+    setTimeout(() => ta.focus(), 50);
+  });
+}
+$('#fbBtn').addEventListener('click', feedbackDialog);
+$('#verLabel').textContent = `메모 서재 v${APP_VERSION}`;
 
 /* ---------------- wire up ---------------- */
 $('#newBtn').addEventListener('click', openPicker);
 $('#addFolder').addEventListener('click', addFolder);
-$('#q').addEventListener('input', e => { S.q = e.target.value; renderLib(); });
+$('#q').addEventListener('input', e => { S.q = e.target.value; $('#q2').value = S.q; renderLib(); });
 window.addEventListener('beforeunload', () => { if (saveT) commit(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) commit(); });
 init();
