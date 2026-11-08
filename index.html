@@ -525,6 +525,7 @@ body.locked .toast{z-index:220}
     <span class="sep"></span>
     <button data-c="table" title="표 넣기">▦ 표</button>
     <button data-c="row" title="커서가 있는 표에 행 추가">＋ 행</button>
+    <button data-c="rowdel" title="커서가 있는 표의 줄 지우기">－ 행</button>
     <button data-c="hr" title="구분선">― 구분선</button>
     <span class="sep"></span>
     <button data-c="photo" title="사진·그림 넣기 (캡처는 Ctrl+V로 바로 붙여넣기)">🖼 사진</button>
@@ -1567,6 +1568,21 @@ const CMD = {
   quote: () => wrapBlock('blockquote'), callout: () => wrapBlock('div', 'callout'),
   hr: () => ex('insertHTML', '<hr><p><br></p>'),
   table: () => ex('insertHTML', '<table class="cards"><thead><tr><th>항목</th><th>내용</th><th>메모</th></tr></thead><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>'),
+  rowdel: () => {
+    const tr = closestInPaper('tr');
+    if (!tr) { toast('지울 줄에 커서를 두세요'); return; }
+    const tb = tr.closest('table');
+    if (tb.classList.contains('mandal') || tb.classList.contains('cal')) { toast('이 표는 줄을 지울 수 없어요'); return; }
+    if (tr.parentElement.tagName === 'THEAD' || tr.parentElement.tagName === 'TFOOT') { toast('제목 줄·합계 줄은 지울 수 없어요'); return; }
+    const rows = [...tb.querySelectorAll('tbody tr')];
+    if (rows.length <= 1) {
+      tb.remove(); toast('표를 지웠어요');
+    } else {
+      const next = tr.nextElementSibling || tr.previousElementSibling;
+      tr.remove();
+      if (next && next.cells[0]) { const r = document.createRange(); r.selectNodeContents(next.cells[0]); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    }
+  },
   row: () => {
     const tr = closestInPaper('tr');
     if (!tr) { toast('행을 추가할 표 안에 커서를 두세요'); return; }
@@ -1610,8 +1626,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.0.1';
 const CHANGELOG = [
+  { v: '2.0.1', d: '11월 9일', items: ['툴바에 「－ 행」: 표에서 필요 없는 줄 지우기', '고친 양식을 「⭐ 템플릿으로 저장」하면 그 메모의 새 페이지도 그 양식으로 추가돼요'] },
   { v: '2.0', d: '11월 8일', items: ['📄 메모 하나에 페이지를 계속 추가할 수 있어요: 맨 아래 「＋ 같은 양식으로 새 페이지」', '페이지 목록에서 이동·순서 바꾸기·삭제, PDF는 전체 페이지로도 저장'] },
   { v: '1.9', d: '11월 8일', items: ['💖 덕질 일기 보완: 덕질 종류 여러 개 선택, 무대·공연 기록, 오늘의 노래, 소비 자동 합계, 다가오는 일정', '🎬 감상 기록: 영화·드라마에 예능·음악까지, 회차·트랙 기록과 출연자 메모', '📔 만년 다이어리: 먼슬리 달력(날짜 채우기), 주차별 위클리, 습관 체크, 프리메모'] },
   { v: '1.8', d: '11월 8일', items: ['업데이트 소식을 이렇게 배너로 알려드려요', '앱을 켜둔 사이에 새 버전이 나오면 바로 적용할 수 있어요'] },
@@ -2172,8 +2189,11 @@ $('#tplSaveBtn').addEventListener('click', async () => {
   const name = await askText('템플릿 이름', n.tplName && n.tpl ? n.tplName : (n.title || '내 템플릿').replace(/\s*\d+\/\d+$/, ''), '저장'); if (!name) return;
   const tmp = paper.cloneNode(true);
   tmp.querySelectorAll('ul.check > li').forEach(li => li.dataset.done = 'false');
-  S.tpls.push({ id: uid('t_'), name, icon: n.icon || tplOf(n).icon, color: n.color || tplOf(n).color, paper: n.paper, base: n.tpl, html: tmp.innerHTML });
-  saveTpls(); toast(`'${name}' 템플릿을 저장했어요. 새 메모 → 내 템플릿에서 쓸 수 있어요`);
+  const tid = uid('t_');
+  S.tpls.push({ id: tid, name, icon: n.icon || tplOf(n).icon, color: n.color || tplOf(n).color, paper: n.paper, base: n.tpl, html: cleanPaperHTML(tmp) });
+  saveTpls();
+  n.tplId = tid; n.tplName = name; saveNote(S.openId); renderPager();
+  toast(`'${name}' 템플릿을 저장했어요. 이 메모의 「같은 양식으로 새 페이지」도 이 양식으로 추가돼요`);
 });
 
 /* ---------------- backup ---------------- */
