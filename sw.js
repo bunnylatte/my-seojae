@@ -1,5 +1,5 @@
-// 메모 서재 오프라인 캐시
-const VERSION = 'memo-seojae-v1.5.1';
+// 담노트 DAM:NOTE 오프라인 캐시
+const VERSION = 'memo-seojae-v1.6';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable.png'];
 const CDN = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'];
 

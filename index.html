@@ -6,11 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="메모 서재">
+<meta name="apple-mobile-web-app-title" content="담노트">
 <meta name="format-detection" content="telephone=no">
-<title>메모 서재</title>
+<title>담노트 DAM:NOTE</title>
 <meta name="theme-color" content="#5a67e8">
-<meta name="description" content="템플릿으로 정리하는 나만의 메모장">
+<meta name="description" content="담노트 DAM:NOTE · 템플릿으로 담아두는 나만의 메모장">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -37,6 +37,8 @@ html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 #scrim{display:none}
 #side{background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 14px;overflow:auto}
 .brand{display:flex;align-items:center;gap:10px;padding:0 8px 20px;font-weight:700;font-size:17px}
+.brand .bname{display:flex;flex-direction:column;line-height:1.15}
+.brand .bname small{font-size:10.5px;letter-spacing:.14em;color:var(--muted);font-weight:500;margin-top:2px}
 .brand .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#7b86f0,#5a67e8);display:grid;place-items:center;color:#fff;font-size:15px}
 .sec-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;padding:14px 10px 6px}
 .fitem{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;cursor:pointer;position:relative;user-select:none}
@@ -390,7 +392,7 @@ body.locked .toast{z-index:220}
 <div id="app">
   <div id="scrim"></div>
   <aside id="side">
-    <div class="brand"><div class="logo">✎</div>메모 서재</div>
+    <div class="brand"><div class="logo">✎</div><div class="bname">담노트<small>DAM:NOTE</small></div></div>
     <div id="fixedNav"></div>
     <div class="sec-label">폴더</div>
     <div id="folderNav"></div>
@@ -1318,7 +1320,7 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6';
 let selStk = null, selImg = null, photoRange = null;
 function cleanPaperHTML(src = paper) {
   const c = src.cloneNode(true);
@@ -1853,7 +1855,7 @@ async function backupOut() {
   for (const id of ids) { try { const b = await idbDo('img', 'readonly', st => st.get(id)); if (b) images[id] = await blobToDataURL(b); } catch {} }
   const data = { app: 'memo-seojae', version: 2, exported: new Date().toISOString(), folders: S.folders, templates: S.tpls, notes: S.notes, images };
   const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  await saveFile(`메모서재_백업_${stamp}.json`, new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  await saveFile(`담노트_백업_${stamp}.json`, new Blob([JSON.stringify(data)], { type: 'application/json' }));
   S.meta.lastBackup = Date.now(); saveMeta(); renderLib();
 }
 async function dataURLToBlob(u) { return await (await fetch(u)).blob(); }
@@ -1868,7 +1870,7 @@ async function migrateInlineImages(html) {
 async function backupIn(file) {
   let data;
   try { data = JSON.parse(await file.text()); } catch { toast('백업 파일을 읽을 수 없어요'); return; }
-  if (!data || data.app !== 'memo-seojae' || typeof data.notes !== 'object') { toast('메모 서재 백업 파일이 아니에요'); return; }
+  if (!data || data.app !== 'memo-seojae' || typeof data.notes !== 'object') { toast('담노트 백업 파일이 아니에요'); return; }
   const notes = Object.entries(data.notes).filter(([k, v]) => /^n_[\w-]+$/.test(k) && v && typeof v === 'object');
   const same = notes.filter(([k]) => S.notes[k]).length;
   const ok = await dialog((b, done) => {
@@ -1971,7 +1973,7 @@ $('#iosInstallBtn').addEventListener('click', () => { document.body.classList.re
 function onboarding() {
   document.body.classList.remove('drawer');
   const slides = [
-    { big: '📚', h: '메모 서재에 오신 걸 환영해요', p: '공책을 꽂아두는 서재처럼 메모를 모아두는 나만의 메모장이에요. 자유롭게 쓰거나, 정리용 칸이 준비된 템플릿으로 바로 시작할 수 있어요.' },
+    { big: '🐰', h: '담노트에 오신 걸 환영해요', p: '오늘의 생각, 기록, 좋아하는 것들을 차곡차곡 담아두는 나만의 노트예요. 자유롭게 쓰거나, 정리용 칸이 준비된 템플릿으로 바로 시작할 수 있어요.' },
     { big: '📝', h: '템플릿으로 시작하기', p: '「＋ 새 메모」를 누르면 템플릿 16종이 나와요.', list: ['타로 정리 · 덕질 일기 · 영화 감상', '스터디 플래너 · 업무일지 · 연구노트 · 만다라트', '가계부(자동 합계) · 여행 계획 · 독서 기록 …'], tip: '직접 다듬은 양식은 「⭐ 템플릿으로 저장」으로 남겨서 계속 쓸 수 있어요.' },
     { big: '✨', h: '사진과 스티커로 꾸미기', p: '툴바의 「🖼 사진」으로 사진을 넣고, 「✨ 스티커」로 이모지·라벨·내 사진 스티커를 붙여요.', list: ['스티커는 끌어서 옮기고, 동그라미 손잡이로 크기·방향을 바꿔요', FINE ? '화면 캡처 후 Ctrl+V 하면 바로 들어가요' : '사진을 누르면 크기 조절·삭제 메뉴가 나와요'] },
     { big: '📤', h: '공유하고 저장하기', p: '정리한 메모를 형식 그대로 다른 곳에 보낼 수 있어요.', list: ['이미지로 내보내기: 인스타 4:5 · 스토리 크기로 자동 나눔', '텍스트로 복사: 카톡·문자에 깔끔하게', 'PDF로 저장: 인쇄 창에서 「PDF로 저장」'] },
@@ -2009,8 +2011,8 @@ function onboarding() {
 function createGuideNote() {
   const id = uid('n_');
   const kbd = FINE ? 'Ctrl+V로 캡처 붙여넣기, Ctrl+S 저장, Ctrl+P PDF' : '사진을 누르면 크기 조절·스티커로 바꾸기·삭제';
-  S.notes[id] = { title: '📘 메모 서재 사용법', tpl: 'blank', guide: 1, paper: 'lined', color: '#7ba5d6', folder: '', created: Date.now(), updated: Date.now(), html:
-`<h1>📘 메모 서재 사용법</h1>
+  S.notes[id] = { title: '📘 담노트 사용법', tpl: 'blank', guide: 1, paper: 'lined', color: '#7ba5d6', folder: '', created: Date.now(), updated: Date.now(), html:
+`<h1>📘 담노트 사용법</h1>
 <p>이 메모는 마음껏 고치거나 지워도 돼요.</p>
 <h2>시작하기</h2>
 <ul class="check"><li data-done="false">「＋ 새 메모」로 템플릿 골라 보기</li><li data-done="false">폴더 만들어서 메모 정리하기</li><li data-done="false">스티커 하나 붙여 보기</li><li data-done="false">「백업 저장」 한 번 눌러 두기</li></ul>
@@ -2051,7 +2053,7 @@ function feedbackDialog() {
   });
 }
 $('#fbBtn').addEventListener('click', feedbackDialog);
-$('#verLabel').textContent = `메모 서재 v${APP_VERSION}`;
+$('#verLabel').textContent = `담노트 DAM:NOTE v${APP_VERSION}`;
 
 /* ---------------- 앱 잠금 (PIN) ---------------- */
 const b64e = u8 => btoa(String.fromCharCode(...u8));
@@ -2077,7 +2079,7 @@ function showLock() {
   let pin = '';
   const dots = el('div', { class: 'ldots' }), msg = el('div', { class: 'lmsg', text: 'PIN을 입력하세요' });
   const ov = el('div', { id: 'lock' }, el('div', { class: 'lbox' },
-    el('div', { class: 'llogo', text: '✎' }), el('div', { class: 'ltitle', text: '메모 서재' }), msg, dots));
+    el('div', { class: 'llogo', text: '✎' }), el('div', { class: 'ltitle', text: '담노트' }), msg, dots));
   const pad = el('div', { class: 'lpad' });
   const paint = () => dots.replaceChildren(...Array.from({ length: S.meta.lock.len || 6 }, (_, i) => el('i', { class: i < pin.length ? 'on' : '' })));
   const press = async k => {

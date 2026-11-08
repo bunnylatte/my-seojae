@@ -1,7 +1,7 @@
 {
-  "name": "메모 서재",
-  "short_name": "메모 서재",
-  "description": "템플릿으로 정리하는 나만의 메모장",
+  "name": "담노트 DAM:NOTE",
+  "short_name": "담노트",
+  "description": "템플릿으로 담아두는 나만의 메모장",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
