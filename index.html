@@ -425,6 +425,25 @@ body.locked .toast{z-index:220}
   .paper .calttl{font-size:17px}
   .paper table.habit th{font-size:11px}
 }
+.pager{width:794px;max-width:100%;margin:18px auto 0;display:flex;flex-direction:column;align-items:center;gap:10px}
+.pgnav{display:flex;align-items:center;gap:8px}
+.pgnav button{height:36px;padding:0 14px;border-radius:10px;background:#fff;border:1px solid var(--line);font-size:13.5px}
+.pgnav button:disabled{opacity:.4;cursor:default}
+.pgnav .pgnum{font-weight:700;min-width:90px}
+.pgadd{width:100%;height:52px;border:2px dashed #cfcbc3;border-radius:14px;color:var(--accent);font-weight:700;font-size:15px;background:rgba(255,255,255,.5)}
+.pgadd:hover{border-color:var(--accent);background:#fff}
+.pgblank{font-size:12.5px;color:var(--muted);text-decoration:underline;padding:2px 6px}
+.pagechip{height:30px;padding:0 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:12.5px;flex:none}
+.pglist{display:flex;flex-direction:column;gap:6px;max-height:min(55vh,460px);overflow:auto;margin-top:6px}
+.pgrow{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:12px;padding:4px}
+.pgrow.on{border-color:var(--accent);background:var(--accent-soft)}
+.pgmain{flex:1;min-width:0;text-align:left;padding:8px 10px;border-radius:9px;display:flex;flex-direction:column}
+.pgmain span{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pgi{width:34px;height:34px;border-radius:9px;color:var(--muted);flex:none}
+.pgi:hover{background:#f0eee9;color:var(--ink)}
+.pgi:disabled{opacity:.3}
+.pgi.del:hover{color:var(--danger)}
+@media print{#printArea .paper{break-inside:auto}}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -471,6 +490,7 @@ body.locked .toast{z-index:220}
 <section id="editor" hidden>
   <div class="ebar">
     <button class="back" id="backBtn">‹ 서재</button>
+    <button id="pageChip" class="pagechip" hidden title="페이지 목록"></button>
     <input class="title" id="eTitle" placeholder="제목 없음" maxlength="80">
     <span class="saved m-hide" id="savedState"></span>
     <select id="eFolder" class="m-hide" title="폴더"></select>
@@ -512,6 +532,7 @@ body.locked .toast{z-index:220}
   </div>
   <div class="desk" id="desk">
     <div class="paper" id="paper" contenteditable="true" spellcheck="false"></div>
+    <div class="pager" id="pager"></div>
   </div>
 </section>
 <div id="imgbar" hidden>
@@ -530,6 +551,7 @@ const $ = s => document.querySelector(s);
 const el = (tag, attrs = {}, ...kids) => {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
     if (k === 'class') n.className = v;
     else if (k === 'style') n.style.cssText = v;
     else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
@@ -858,9 +880,10 @@ function upgradeTarot(html) {
 function upgradeAllTarot(delay = 0) {
   let cnt = 0;
   for (const [id, n] of Object.entries(S.notes)) {
-    if (n.tpl !== 'tarot' && !/타로 리딩/.test(n.html || '')) continue;
-    const h = upgradeTarot(n.html);
-    if (h !== n.html) { n.html = h; saveNote(id); cnt++; }
+    if (n.tpl !== 'tarot' && !/타로 리딩/.test(allHTML(n))) continue;
+    let ch = false;
+    normNote(n).pages.forEach(p => { const h = upgradeTarot(p.html); if (h !== p.html) { p.html = h; ch = true; cnt++; } });
+    if (ch) { n.html = n.pages[0].html; saveNote(id); }
   }
   for (const t of S.tpls) { if (t.base === 'tarot') { const h = upgradeTarot(t.html); if (h !== t.html) { t.html = h; cnt++; saveTpls(); } } }
   if (cnt) setTimeout(() => toast(`예전 타로일지 ${cnt}개를 새 양식(덱 선택·정/역방향 버튼)으로 바꿨어요. 적어둔 내용은 그대로예요`), delay);
@@ -1049,7 +1072,7 @@ function renderLib() {
   const folderOk = n => S.view === 'all' ? true : S.view === 'none' ? !(n.folder && S.folders.some(f => f.id === n.folder)) : n.folder === S.view;
   const list = Object.entries(S.notes)
     .filter(([, n]) => folderOk(n))
-    .filter(([, n]) => !q || (n.title || '').toLowerCase().includes(q) || stripText(n.html).toLowerCase().includes(q))
+    .filter(([, n]) => !q || (n.title || '').toLowerCase().includes(q) || stripText(allHTML(n)).toLowerCase().includes(q))
     .sort((a, b) => (b[1].updated || 0) - (a[1].updated || 0));
   if (!list.length) shelf.append(el('div', { class: 'empty', text: q ? '검색 결과가 없어요.' : '아직 메모가 없어요. ＋ 새 메모로 시작해 보세요.' }));
   for (const [id, n] of list) shelf.append(noteCard(id, n));
@@ -1062,7 +1085,7 @@ function noteCard(id, n) {
     el('div', { class: 'cover', style: `--c:${n.color || t.color}` },
       el('div', { class: 'lbl' }, el('div', { class: 'ic', text: n.icon || t.icon }), el('div', { class: 't', text: n.title || '제목 없음' }))),
     el('div', { class: 'meta' },
-      el('div', { class: 'txt' }, el('div', { class: 'name', text: n.title || '제목 없음' }), el('div', { class: 'date', text: `${short(n.updated || Date.now())} · ${n.tplName || t.name}` })),
+      el('div', { class: 'txt' }, el('div', { class: 'name', text: n.title || '제목 없음' }), el('div', { class: 'date', text: `${short(n.updated || Date.now())} · ${n.tplName || t.name}` + (Array.isArray(n.pages) && n.pages.length > 1 ? ` · ${n.pages.length}장` : '') })),
       el('button', { class: 'more', text: '⋯', title: '더보기', onclick: e => { e.stopPropagation(); noteMenu(id, e.currentTarget); } })));
   card.addEventListener('click', () => openNote(id));
   card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-note', id); e.dataTransfer.effectAllowed = 'move'; });
@@ -1172,7 +1195,7 @@ function createNote(key, custom) {
   const id = uid('n_');
   const folder = S.view !== 'all' && S.view !== 'none' ? S.view : '';
   S.notes[id] = custom ? {
-    title: `${custom.name} ${mmdd()}`, tpl: custom.base || 'blank', tplName: custom.name, icon: custom.icon || '⭐',
+    title: `${custom.name} ${mmdd()}`, tpl: custom.base || 'blank', tplName: custom.name, tplId: custom.id, icon: custom.icon || '⭐',
     html: custom.html.replace(/\{\{오늘\}\}/g, today()), paper: custom.paper || 'blank', color: custom.color || '#e8a25b',
     folder, created: Date.now(), updated: Date.now(),
   } : {
@@ -1222,6 +1245,101 @@ function openPicker() {
   }, true);
 }
 
+/* ---------------- 페이지 (메모 하나에 여러 장) ---------------- */
+function normNote(n) {
+  if (!n) return n;
+  if (!Array.isArray(n.pages) || !n.pages.length) n.pages = [{ html: typeof n.html === 'string' ? n.html : '' }];
+  n.pi = Math.min(Math.max(0, n.pi | 0), n.pages.length - 1);
+  return n;
+}
+const pageHTML = n => normNote(n).pages[n.pi].html || '';
+const allHTML = n => normNote(n).pages.map(p => p.html || '').join(' ');
+function setPageHTML(n, html) { normNote(n); n.pages[n.pi].html = html; n.html = n.pages[0].html; }
+function templateHTMLFor(n) {
+  const ct = S.tpls.find(t => (n.tplId && t.id === n.tplId)) || (n.tplName && S.tpls.find(t => t.name === n.tplName));
+  if (ct) return ct.html.replace(/\{\{오늘\}\}/g, today());
+  const t = TPL[n.tpl];
+  return t ? t.html() : '<p><br></p>';
+}
+function pageLabel(html, i) {
+  const d = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html').body.firstChild;
+  d.querySelectorAll('.pick,.cnt,.calfill,.wkadd,.stk').forEach(x => x.remove());
+  const date = [...d.querySelectorAll('table.meta tr')].find(tr => /날짜|일시|작성일|본 날짜/.test((tr.cells[0] || {}).textContent || ''));
+  const head = (d.querySelector('h1') || {}).textContent || '';
+  const first = [...d.querySelectorAll('td,p,li,blockquote')].filter(x => !(date && date.contains(x)) && !x.closest('th') && !(x.tagName === 'TD' && x.previousElementSibling === null && x.closest('table.cards'))).map(x => x.textContent.trim()).find(Boolean) || '';
+  const sub = [date ? date.cells[1].textContent.trim() : '', first].filter(Boolean).join(' · ');
+  return { title: `${i + 1}페이지`, sub: (sub || head || '빈 페이지').slice(0, 40) };
+}
+function loadPage() {
+  const n = S.notes[S.openId]; if (!n) return;
+  deselectAll();
+  paper.innerHTML = sanitize(pageHTML(n) || '<p><br></p>', true);
+  hydrate(paper); syncCounts();
+  renderPager();
+  $('#desk').scrollTop = 0;
+}
+function goPage(i) {
+  const n = S.notes[S.openId]; if (!n) return;
+  commit(); normNote(n);
+  if (i < 0 || i >= n.pages.length || i === n.pi) return;
+  n.pi = i; saveNote(S.openId); loadPage();
+}
+function addPage(kind) {
+  const n = S.notes[S.openId]; if (!n) return;
+  commit(); normNote(n);
+  const html = kind === 'blank' ? '<p><br></p>' : templateHTMLFor(n);
+  n.pages.splice(n.pi + 1, 0, { html }); n.pi++; n.updated = Date.now();
+  saveNote(S.openId); loadPage();
+  toast(`${n.pi + 1}페이지를 추가했어요 (전체 ${n.pages.length}장)`);
+}
+function renderPager() {
+  const n = S.notes[S.openId], box = $('#pager'), chip = $('#pageChip'); if (!n || !box) return;
+  normNote(n);
+  const many = n.pages.length > 1, blankTpl = !n.tplId && !n.tplName && (n.tpl === 'blank' || !TPL[n.tpl]);
+  box.replaceChildren();
+  if (many) box.append(el('div', { class: 'pgnav' },
+    el('button', { text: '‹ 이전', disabled: n.pi === 0 ? '' : null, onclick: () => goPage(n.pi - 1) }),
+    el('button', { class: 'pgnum', text: `${n.pi + 1} / ${n.pages.length} ▾`, onclick: pageListDialog }),
+    el('button', { text: '다음 ›', disabled: n.pi === n.pages.length - 1 ? '' : null, onclick: () => goPage(n.pi + 1) })));
+  box.append(el('button', { class: 'pgadd', text: blankTpl ? '＋ 새 페이지 추가' : '＋ 같은 양식으로 새 페이지', onclick: () => addPage('same') }));
+  if (!blankTpl) box.append(el('button', { class: 'pgblank', text: '빈 페이지로 추가', onclick: () => addPage('blank') }));
+  if (chip) { chip.hidden = !many; chip.textContent = `${n.pi + 1}/${n.pages.length}`; }
+}
+function pageListDialog() {
+  const n = S.notes[S.openId]; if (!n) return;
+  commit(); normNote(n);
+  dialog((b, done) => {
+    b.append(el('h3', { text: `📄 페이지 ${n.pages.length}장` }), el('p', { text: '눌러서 이동하고, 화살표로 순서를 바꾸거나 지울 수 있어요.' }));
+    const list = el('div', { class: 'pglist' });
+    const draw = () => {
+      list.replaceChildren();
+      n.pages.forEach((p, i) => {
+        const lb = pageLabel(p.html || '', i);
+        list.append(el('div', { class: 'pgrow' + (i === n.pi ? ' on' : '') },
+          el('button', { class: 'pgmain', onclick: () => { done(); if (i !== n.pi) { n.pi = i; saveNote(S.openId); loadPage(); } } }, el('b', { text: lb.title }), el('span', { text: lb.sub })),
+          el('button', { class: 'pgi', title: '위로', text: '↑', disabled: i === 0 ? '' : null, onclick: () => movePage(i, -1) }),
+          el('button', { class: 'pgi', title: '아래로', text: '↓', disabled: i === n.pages.length - 1 ? '' : null, onclick: () => movePage(i, 1) }),
+          el('button', { class: 'pgi del', title: '페이지 삭제', text: '🗑', disabled: n.pages.length === 1 ? '' : null, onclick: () => delPage(i) })));
+      });
+    };
+    const movePage = (i, d) => {
+      const j = i + d; if (j < 0 || j >= n.pages.length) return;
+      [n.pages[i], n.pages[j]] = [n.pages[j], n.pages[i]];
+      if (n.pi === i) n.pi = j; else if (n.pi === j) n.pi = i;
+      n.html = n.pages[0].html; n.updated = Date.now(); saveNote(S.openId); draw(); loadPage();
+    };
+    const delPage = async i => {
+      if (n.pages.length === 1) return;
+      if (!await confirmBox(`${i + 1}페이지를 지울까요?`, '이 페이지에 적은 내용이 지워져요.')) return;
+      n.pages.splice(i, 1);
+      if (n.pi >= i && n.pi > 0) n.pi--;
+      n.html = n.pages[0].html; n.updated = Date.now(); saveNote(S.openId); draw(); loadPage();
+    };
+    draw();
+    b.append(list, el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() }), el('button', { class: 'btn', text: '＋ 같은 양식 추가', onclick: () => { done(); addPage('same'); } })));
+  });
+}
+
 /* ---------------- editor ---------------- */
 const paper = $('#paper');
 let saveT = null;
@@ -1234,8 +1352,10 @@ function openNote(id) {
   fs.value = S.folders.some(f => f.id === n.folder) ? n.folder : '';
   $('#ePaper').value = n.paper || 'blank';
   applyPaper(paper, n);
-  paper.innerHTML = sanitize(n.html || '<p><br></p>', true);
+  normNote(n);
+  paper.innerHTML = sanitize(pageHTML(n) || '<p><br></p>', true);
   hydrate(paper);
+  renderPager();
   $('#editor').hidden = false; document.body.classList.add('editing'); savedUI();
   $('#desk').scrollTop = 0;
   setTimeout(() => { if (!n.title && n.tpl === 'blank') $('#eTitle').focus(); else placeCaret(); }, 30);
@@ -1255,8 +1375,8 @@ function commit() {
   clearTimeout(saveT); saveT = null;
   const id = S.openId, n = S.notes[id]; if (!n) return;
   const html = cleanPaperHTML(), title = $('#eTitle').value.trim();
-  if (html === n.html && title === (n.title || '')) { savedUI(); return; }
-  n.html = html; n.title = title; n.updated = Date.now(); saveNote(id);
+  if (html === pageHTML(n) && title === (n.title || '')) { savedUI(); return; }
+  setPageHTML(n, html); n.title = title; n.updated = Date.now(); saveNote(id);
 }
 
 function mandalSync() {
@@ -1334,6 +1454,7 @@ $('#eTitle').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isCo
 $('#eFolder').addEventListener('change', e => { const n = S.notes[S.openId]; n.folder = e.target.value; saveNote(S.openId); toast('폴더를 옮겼어요'); });
 $('#ePaper').addEventListener('change', e => { const n = S.notes[S.openId]; n.paper = e.target.value; applyPaper(paper, n); saveNote(S.openId); });
 $('#backBtn').addEventListener('click', closeEditor);
+$('#pageChip').addEventListener('click', () => pageListDialog());
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (S.openId) { commit(); toast('저장했어요'); } }
   if (e.key === 'Escape') { closeMenu(); if (selStk || selImg) deselectAll(); }
@@ -1489,8 +1610,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.9';
+const APP_VERSION = '2.0';
 const CHANGELOG = [
+  { v: '2.0', d: '11월 9일', items: ['📄 메모 하나에 페이지를 계속 추가할 수 있어요: 맨 아래 「＋ 같은 양식으로 새 페이지」', '페이지 목록에서 이동·순서 바꾸기·삭제, PDF는 전체 페이지로도 저장'] },
   { v: '1.9', d: '11월 9일', items: ['💖 덕질 일기 보완: 덕질 종류 여러 개 선택, 무대·공연 기록, 오늘의 노래, 소비 자동 합계, 다가오는 일정', '🎬 감상 기록: 영화·드라마에 예능·음악까지, 회차·트랙 기록과 출연자 메모', '📔 만년 다이어리: 먼슬리 달력(날짜 채우기), 주차별 위클리, 습관 체크, 프리메모'] },
   { v: '1.8', d: '11월 8일', items: ['업데이트 소식을 이렇게 배너로 알려드려요', '앱을 켜둔 사이에 새 버전이 나오면 바로 적용할 수 있어요'] },
   { v: '1.7', d: '11월 8일', items: ['📲 다른 기기로 옮기기: 카톡 「나와의 채팅」으로 파일 하나만 보내면 끝', '여러 번 옮겨도 더 최근에 고친 메모가 남아요'] },
@@ -1857,17 +1979,19 @@ function loadScript(src) {
     const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => { delete libs[src]; rej(new Error('load')); }; document.head.append(s);
   }));
 }
-function stageClone() {
+function stageClone(srcHTML, withTitle = true) {
   const n = S.notes[S.openId];
   const c = el('div', { class: 'paper export' });
   applyPaper(c, n); c.classList.add('export');
-  c.innerHTML = (n.title && !paper.querySelector('h1') ? `<h1></h1>` : '') + cleanPaperHTML();
-  if (n.title && !paper.querySelector('h1')) c.firstChild.textContent = n.title;
+  const body = srcHTML != null ? sanitize(srcHTML, true) : cleanPaperHTML();
+  const hasH1 = /<h1[\s>]/i.test(body), addTitle = withTitle && n.title && !hasH1;
+  c.innerHTML = (addTitle ? `<h1></h1>` : '') + body;
+  if (addTitle) c.firstChild.textContent = n.title;
   c.querySelectorAll('[contenteditable]').forEach(x => x.removeAttribute('contenteditable'));
   hydrateSync(c);
   c.style.width = '794px';
   $('#stage').replaceChildren(c);
-  if (n.title && !paper.querySelector('h1')) {
+  if (addTitle) {
     const h = c.firstChild, shift = h.offsetHeight + parseFloat(getComputedStyle(h).marginBottom || 0);
     c.querySelectorAll(':scope > .stk').forEach(st => { st.style.top = (parseFloat(st.style.top) + shift) + 'px'; });
   }
@@ -2006,9 +2130,25 @@ async function copyImage() {
 }
 async function exportPDF() {
   commit(); deselectAll();
-  const c = stageClone();
-  c.style.width = '';
-  $('#printArea').replaceChildren(c);
+  const n = normNote(S.notes[S.openId]);
+  let which = 'cur';
+  if (n.pages.length > 1) {
+    which = await dialog((b, done) => {
+      b.append(el('h3', { text: 'PDF로 저장' }), el('p', { text: `이 메모에는 페이지가 ${n.pages.length}장 있어요.` }),
+        el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: `지금 페이지만 (${n.pi + 1}p)`, onclick: () => done('cur') }), el('button', { class: 'btn', text: `전체 ${n.pages.length}장`, onclick: () => done('all') })));
+    });
+    if (!which) return;
+  }
+  const area = $('#printArea'); area.replaceChildren();
+  const list = which === 'all' ? n.pages.map((p, i) => [p.html, i]) : [[null, n.pi]];
+  for (const [h, i] of list) {
+    const c = stageClone(h, i === 0 || which === 'cur');
+    c.style.width = '';
+    if (area.children.length) c.style.breakBefore = 'page';
+    area.append(c);
+    await hydrate(c);
+  }
+  const c = area;
   await waitImages(c);
   try { await document.fonts.ready; } catch {}
   const old = document.title; document.title = fileBase();
@@ -2042,7 +2182,7 @@ async function makeBackup() {
   if (S.openId) commit();
   const ids = new Set();
   const scan = h => { for (const m of (h || '').matchAll(/data-img="([\w-]+)"/g)) ids.add(m[1]); };
-  Object.values(S.notes).forEach(n => scan(n.html)); S.tpls.forEach(t => scan(t.html));
+  Object.values(S.notes).forEach(n => scan(allHTML(n))); S.tpls.forEach(t => scan(t.html));
   const images = {};
   for (const id of ids) { try { const b = await idbDo('img', 'readonly', st => st.get(id)); if (b) images[id] = await blobToDataURL(b); } catch {} }
   const data = { app: 'memo-seojae', version: 3, exported: new Date().toISOString(), folders: S.folders, templates: S.tpls, notes: S.notes, deleted: S.meta.deleted || {}, images };
@@ -2100,7 +2240,10 @@ async function backupIn(file) {
     const cur = S.notes[k];
     if (cur && (cur.updated || 0) >= (v.updated || 0)) continue;
     if (!cur && S.meta.deleted[k] && S.meta.deleted[k] >= (v.updated || 0)) continue;
-    S.notes[k] = { ...v, html: await migrateInlineImages(typeof v.html === 'string' ? v.html : '') };
+    const nv = { ...v };
+    if (Array.isArray(v.pages) && v.pages.length) { nv.pages = []; for (const p of v.pages) nv.pages.push({ html: await migrateInlineImages(p && typeof p.html === 'string' ? p.html : '') }); nv.html = nv.pages[0].html; }
+    else { nv.html = await migrateInlineImages(typeof v.html === 'string' ? v.html : ''); delete nv.pages; }
+    S.notes[k] = normNote(nv);
     try { await backendWrite(k, S.notes[k]); cur ? updated++ : added++; } catch { fail++; }
     if (++i % 10 === 0) toast(`합치는 중… (${i})`);
   }
@@ -2192,7 +2335,10 @@ $('#moreBtn').addEventListener('click', e => {
         const v = await chooseDialog('속지를 골라 주세요', [['blank', '무지'], ['lined', '줄노트'], ['grid-p', '모눈'], ['dot', '도트']], n.paper || 'blank');
         if (v === null) return; n.paper = v; $('#ePaper').value = v; applyPaper(paper, n); saveNote(S.openId);
       }),
-      mi('⭐ 템플릿으로 저장', () => $('#tplSaveBtn').click()));
+      mi('⭐ 템플릿으로 저장', () => $('#tplSaveBtn').click()),
+      el('hr'),
+      mi('＋ 같은 양식으로 새 페이지', () => addPage('same')),
+      mi('📄 페이지 목록 · 순서 · 삭제', pageListDialog));
   });
 });
 
