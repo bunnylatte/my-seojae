@@ -347,6 +347,27 @@ html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 .fbk button{height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px}
 .fbk button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .ver{font-size:11px;color:#b3b0ba;margin-top:6px}
+#lock{position:fixed;inset:0;z-index:200;background:linear-gradient(160deg,#f4f2ee,#e9e7f6);display:grid;place-items:center;padding:20px env(safe-area-inset-right) calc(20px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+.lbox{width:300px;max-width:100%;text-align:center}
+.lbox.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.llogo{width:58px;height:58px;border-radius:16px;margin:0 auto 10px;background:linear-gradient(135deg,#7b86f0,#5a67e8);color:#fff;display:grid;place-items:center;font-size:26px}
+.ltitle{font-weight:700;font-size:18px}
+.lmsg{color:var(--muted);margin:10px 0 16px;min-height:20px;font-size:14px}
+.ldots{display:flex;gap:12px;justify-content:center;margin-bottom:26px}
+.ldots i{width:13px;height:13px;border-radius:50%;border:2px solid #b9b5c2}
+.ldots i.on{background:var(--accent);border-color:var(--accent)}
+.lpad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.lpad button{height:62px;border-radius:50%;width:62px;margin:0 auto;background:#fff;font-size:24px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.lpad button:active{background:var(--accent-soft)}
+.lpad button.fn{background:transparent;box-shadow:none;font-size:15px;color:var(--muted)}
+.lforgot{margin-top:20px;font-size:13px;color:var(--muted);text-decoration:underline}
+body.veil #app,body.veil #editor{filter:blur(18px)}
+body.locked .overlay{z-index:210}
+body.locked .toast{z-index:220}
+.dlg .tip{background:#fff8e8;border:1px solid #f1dfb3;color:#7a5b16;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6}
+.dlg input[type=password]{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;padding:0 12px;outline:0;margin:6px 0 4px}
+.dlg input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -369,7 +390,7 @@ html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
     <div id="folderNav"></div>
     <button class="addf" id="addFolder">＋ 새 폴더</button>
     <div class="side-foot">
-      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
+      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="lockBtn">🔒 앱 잠금</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
       <input type="file" id="bkFile" accept=".json,application/json" hidden>
       <div class="st" id="storeState"><i></i><span>불러오는 중…</span></div>
       <div class="ver" id="verLabel"></div>
@@ -813,7 +834,8 @@ async function init() {
   try { if (navigator.storage && navigator.storage.persist) S.persisted = await navigator.storage.persist(); } catch {}
   upgradeAllTarot();
   renderAll();
-  if (!S.loadError && !S.meta.onboarded) setTimeout(onboarding, 300);
+  if (S.meta.lock) { showLock(); if (!S.meta.onboarded) unlockHooks.push(() => setTimeout(onboarding, 300)); }
+  else if (!S.loadError && !S.meta.onboarded) setTimeout(onboarding, 300);
 }
 const saveMeta = () => queueWrite('meta', S.meta);
 const saveFolders = () => queueWrite('folders', { list: S.folders });
@@ -847,7 +869,8 @@ function renderSide() {
   }
   const st = $('#storeState');
   st.className = 'st';
-  st.querySelector('span').textContent = S.mode === 'loading' ? '불러오는 중…' : '이 PC에 저장 중 · 인터넷 없이도 동작';
+  st.querySelector('span').textContent = S.mode === 'loading' ? '불러오는 중…' : '이 기기에 저장 중 · 인터넷 없이도 동작';
+  const lb = $('#lockBtn'); if (lb) lb.textContent = S.meta.lock ? '🔒 앱 잠금 · 켜짐' : '🔓 앱 잠금 설정';
 }
 function navItem(id, icon, name, count, color) {
   const n = el('div', { class: 'fitem' + (S.view === id ? ' on' : '') },
@@ -1288,7 +1311,7 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 let selStk = null, selImg = null, photoRange = null;
 function cleanPaperHTML(src = paper) {
   const c = src.cloneNode(true);
@@ -2022,6 +2045,138 @@ function feedbackDialog() {
 }
 $('#fbBtn').addEventListener('click', feedbackDialog);
 $('#verLabel').textContent = `메모 서재 v${APP_VERSION}`;
+
+/* ---------------- 앱 잠금 (PIN) ---------------- */
+const b64e = u8 => btoa(String.fromCharCode(...u8));
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function pinHash(pin, salt, it) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: b64d(salt), iterations: it, hash: 'SHA-256' }, key, 256);
+  return b64e(new Uint8Array(bits));
+}
+async function setPin(pin) {
+  const salt = b64e(crypto.getRandomValues(new Uint8Array(16))), it = 150000;
+  S.meta.lock = { salt, it, hash: await pinHash(pin, salt, it), after: (S.meta.lock && S.meta.lock.after != null) ? S.meta.lock.after : 1 };
+  saveMeta();
+}
+async function checkPin(pin) { const L = S.meta.lock; return !!L && (await pinHash(pin, L.salt, L.it)) === L.hash; }
+let locked = false, hiddenAt = 0, fails = 0, coolUntil = 0;
+function showLock() {
+  if (!S.meta.lock || locked) return;
+  locked = true; document.body.classList.add('locked');
+  if (S.openId) commit();
+  closeMenu(); document.body.classList.remove('drawer');
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  let pin = '';
+  const dots = el('div', { class: 'ldots' }), msg = el('div', { class: 'lmsg', text: 'PIN을 입력하세요' });
+  const ov = el('div', { id: 'lock' }, el('div', { class: 'lbox' },
+    el('div', { class: 'llogo', text: '✎' }), el('div', { class: 'ltitle', text: '메모 서재' }), msg, dots));
+  const pad = el('div', { class: 'lpad' });
+  const paint = () => dots.replaceChildren(...Array.from({ length: S.meta.lock.len || 6 }, (_, i) => el('i', { class: i < pin.length ? 'on' : '' })));
+  const press = async k => {
+    if (Date.now() < coolUntil) { msg.textContent = `잠시 후 다시 시도하세요 (${Math.ceil((coolUntil - Date.now()) / 1000)}초)`; return; }
+    if (k === 'del') pin = pin.slice(0, -1);
+    else if (k === 'ok') { await tryPin(); return; }
+    else if (pin.length < 6) pin += k;
+    paint();
+    if (pin.length >= 4 && S.meta.lock.len === pin.length) await tryPin();
+  };
+  const tryPin = async () => {
+    if (pin.length < 4) return;
+    if (await checkPin(pin)) { fails = 0; locked = false; document.body.classList.remove('locked'); ov.remove(); document.removeEventListener('keydown', key, true); afterUnlock(); return; }
+    fails++; pin = ''; paint(); ov.querySelector('.lbox').classList.remove('shake'); void ov.offsetWidth; ov.querySelector('.lbox').classList.add('shake');
+    if (fails >= 5) { coolUntil = Date.now() + 30000; fails = 0; msg.textContent = '5번 틀렸어요. 30초 뒤에 다시 시도하세요'; }
+    else msg.textContent = `PIN이 맞지 않아요 (${fails}/5)`;
+  };
+  for (const k of ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok']) {
+    pad.append(el('button', { class: k === 'del' || k === 'ok' ? 'fn' : '', text: k === 'del' ? '⌫' : k === 'ok' ? '확인' : k, onclick: () => press(k) }));
+  }
+  ov.querySelector('.lbox').append(pad, el('button', { class: 'lforgot', text: 'PIN을 잊어버렸어요', onclick: forgotPin }));
+  const key = e => {
+    if (!locked) return;
+    if (document.querySelector('.overlay')) return;
+    e.stopPropagation();
+    if (/^\d$/.test(e.key)) { e.preventDefault(); press(e.key); }
+    else if (e.key === 'Backspace') { e.preventDefault(); press('del'); }
+    else if (e.key === 'Enter') { e.preventDefault(); press('ok'); }
+    else if (!e.ctrlKey && !e.metaKey) e.preventDefault();
+  };
+  document.addEventListener('keydown', key, true);
+  paint(); document.body.append(ov);
+}
+let unlockHooks = [];
+function afterUnlock() { const h = unlockHooks; unlockHooks = []; h.forEach(f => f()); }
+async function forgotPin() {
+  const ok = await dialog((b, done) => {
+    const inp = el('input', { type: 'text', placeholder: '삭제' });
+    b.append(el('h3', { text: 'PIN을 잊어버리셨나요?' }),
+      el('p', { text: '메모를 지키기 위해 PIN 없이는 잠금을 풀 수 없어요. 처음부터 다시 시작하려면 이 기기의 모든 메모와 사진을 지워야 해요. 백업 파일이 있다면 지운 뒤 「백업 불러오기」로 되살릴 수 있어요.' }),
+      el('p', { text: "정말 지우려면 아래에 「삭제」라고 적어 주세요." }), inp,
+      el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '취소', onclick: () => done(false) }),
+        el('button', { class: 'btn danger', text: '모두 지우고 초기화', onclick: () => done(inp.value.trim() === '삭제') })));
+  });
+  if (!ok) return;
+  try { await idbDo('kv', 'readwrite', st => st.clear()); await idbDo('img', 'readwrite', st => st.clear()); } catch {}
+  location.reload();
+}
+function lockSettings() {
+  document.body.classList.remove('drawer');
+  const L = S.meta.lock;
+  dialog((b, done) => {
+    b.append(el('h3', { text: '🔒 앱 잠금' }));
+    if (!L) {
+      b.append(el('p', { text: '앱을 열 때 PIN(숫자 4~6자리)을 입력해야 메모를 볼 수 있어요. 이 기기를 다른 사람이 같이 쓰거나, 혹시 휴대폰을 잃어버렸을 때를 대비할 수 있어요.' }),
+        el('div', { class: 'tip', style: 'margin:0 0 4px', text: '⚠️ PIN을 잊어버리면 되찾을 방법이 없어요. 꼭 기억할 수 있는 번호로 정하고, 백업을 해두세요.' }),
+        el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() }), el('button', { class: 'btn', text: 'PIN 설정하기', onclick: () => { done(); pinSetup(); } })));
+      return;
+    }
+    const sel = el('div', { class: 'fbk' });
+    const opts = [[0, '바로'], [1, '1분 뒤'], [5, '5분 뒤'], [15, '15분 뒤']];
+    const paint = () => [...sel.children].forEach((x, i) => x.classList.toggle('on', opts[i][0] === (L.after ?? 1)));
+    opts.forEach(([v, t]) => sel.append(el('button', { text: t, onclick: () => { L.after = v; saveMeta(); paint(); } }))); paint();
+    b.append(el('p', { text: '잠금이 켜져 있어요. 다른 앱으로 갔다가 돌아오거나 창을 다시 열 때 PIN을 물어봐요.' }),
+      el('div', { style: 'font-weight:700;margin:6px 0 8px', text: '다른 화면으로 나가면 언제 잠글까요?' }), sel,
+      el('div', { class: 'row', style: 'flex-wrap:wrap' },
+        el('button', { class: 'btn ghost', text: '잠금 끄기', onclick: async () => { done(); if (await askPinOnce('지금 PIN을 입력하면 잠금이 꺼져요')) { delete S.meta.lock; saveMeta(); renderSide(); toast('앱 잠금을 껐어요'); } } }),
+        el('button', { class: 'btn ghost', text: 'PIN 바꾸기', onclick: async () => { done(); if (await askPinOnce('지금 쓰는 PIN을 입력하세요')) pinSetup(); } }),
+        el('button', { class: 'btn', text: '지금 잠그기', onclick: () => { done(); showLock(); } })));
+  });
+}
+function pinInput() { const i = el('input', { type: 'password', inputmode: 'numeric', autocomplete: 'off', maxlength: '6', placeholder: '숫자 4~6자리', style: 'letter-spacing:6px;text-align:center;font-size:20px' }); i.addEventListener('input', () => { i.value = i.value.replace(/\D/g, '').slice(0, 6); }); return i; }
+function askPinOnce(title) {
+  return dialog((b, done) => {
+    const i = pinInput(); const go = async () => { if (await checkPin(i.value)) done(true); else { toast('PIN이 맞지 않아요'); i.value = ''; i.focus(); } };
+    i.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    b.append(el('h3', { text: title }), i, el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '취소', onclick: () => done(false) }), el('button', { class: 'btn', text: '확인', onclick: go })));
+    setTimeout(() => i.focus(), 50);
+  });
+}
+async function pinSetup() {
+  const pin = await dialog((b, done) => {
+    const a = pinInput(), c = pinInput();
+    const go = () => {
+      if (!/^\d{4,6}$/.test(a.value)) { toast('숫자 4~6자리로 정해 주세요'); return; }
+      if (a.value !== c.value) { toast('두 번 입력한 PIN이 달라요'); c.value = ''; c.focus(); return; }
+      done(a.value);
+    };
+    c.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    b.append(el('h3', { text: '새 PIN 정하기' }), el('p', { text: '숫자 4~6자리를 두 번 입력해 주세요.' }), a, c,
+      el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '취소', onclick: () => done(null) }), el('button', { class: 'btn', text: '저장', onclick: go })));
+    setTimeout(() => a.focus(), 50);
+  });
+  if (!pin) return;
+  await setPin(pin); S.meta.lock.len = pin.length; saveMeta(); renderSide();
+  toast('앱 잠금을 켰어요. 다음에 열 때부터 PIN을 물어봐요');
+}
+$('#lockBtn').addEventListener('click', lockSettings);
+document.addEventListener('visibilitychange', () => {
+  if (!S.meta.lock) return;
+  if (document.hidden) { hiddenAt = Date.now(); document.body.classList.add('veil'); }
+  else {
+    document.body.classList.remove('veil');
+    if (hiddenAt && Date.now() - hiddenAt >= (S.meta.lock.after ?? 1) * 60000) showLock();
+  }
+});
 
 /* ---------------- wire up ---------------- */
 $('#newBtn').addEventListener('click', openPicker);
