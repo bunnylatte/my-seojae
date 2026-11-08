@@ -376,6 +376,12 @@ body.locked .toast{z-index:220}
 .credit a{color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:999px;display:inline-block}
 .credit a:hover{color:var(--accent);background:var(--accent-soft)}
 @media (max-width:760px){.credit{padding-top:36px;font-size:12px}.credit a{padding:6px 8px}}
+.mvstep{display:flex;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.mvn{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;display:grid;place-items:center;flex:none;font-size:13px}
+.mvb{flex:1;min-width:0}
+.mvb b{display:block;margin-bottom:2px}
+.mvt{color:#5d5a66;font-size:13.5px;line-height:1.65;margin-bottom:10px}
+.mvb .btn{width:100%;justify-content:center}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -398,8 +404,8 @@ body.locked .toast{z-index:220}
     <div id="folderNav"></div>
     <button class="addf" id="addFolder">＋ 새 폴더</button>
     <div class="side-foot">
-      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="lockBtn">🔒 앱 잠금</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
-      <input type="file" id="bkFile" accept=".json,application/json" hidden>
+      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="moveBtn">📲 다른 기기로 옮기기</button><button id="lockBtn">🔒 앱 잠금</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
+      <input type="file" id="bkFile" accept=".json,application/json,text/plain,.txt" hidden>
       <div class="st" id="storeState"><i></i><span>불러오는 중…</span></div>
       <div class="ver" id="verLabel"></div>
     </div>
@@ -1035,7 +1041,7 @@ async function deleteFolder(f) {
 function moveNote(id, folder) { S.notes[id].folder = folder; saveNote(id); renderAll(); const f = S.folders.find(x => x.id === folder); toast(`'${f ? f.name : '미분류'}'(으)로 옮겼어요`); }
 async function deleteNote(id) {
   if (!await confirmBox('메모를 삭제할까요?', `'${S.notes[id].title || '제목 없음'}' 메모가 영구적으로 지워져요.`)) return;
-  delete S.notes[id]; queueWrite(id, null); renderAll();
+  delete S.notes[id]; queueWrite(id, null); S.meta.deleted = S.meta.deleted || {}; S.meta.deleted[id] = Date.now(); saveMeta(); renderAll();
 }
 function duplicate(id) {
   const src = S.notes[id], nid = uid('n_');
@@ -1320,7 +1326,7 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 let selStk = null, selImg = null, photoRange = null;
 function cleanPaperHTML(src = paper) {
   const c = src.cloneNode(true);
@@ -1845,17 +1851,22 @@ $('#tplSaveBtn').addEventListener('click', async () => {
 
 /* ---------------- backup ---------------- */
 const blobToDataURL = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b); });
-async function backupOut() {
+async function makeBackup() {
   if (S.openId) commit();
-  toast('백업 파일 만드는 중… (사진 포함)');
   const ids = new Set();
   const scan = h => { for (const m of (h || '').matchAll(/data-img="([\w-]+)"/g)) ids.add(m[1]); };
   Object.values(S.notes).forEach(n => scan(n.html)); S.tpls.forEach(t => scan(t.html));
   const images = {};
   for (const id of ids) { try { const b = await idbDo('img', 'readonly', st => st.get(id)); if (b) images[id] = await blobToDataURL(b); } catch {} }
-  const data = { app: 'memo-seojae', version: 2, exported: new Date().toISOString(), folders: S.folders, templates: S.tpls, notes: S.notes, images };
-  const d = new Date(), stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  await saveFile(`담노트_백업_${stamp}.json`, new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  const data = { app: 'memo-seojae', version: 3, exported: new Date().toISOString(), folders: S.folders, templates: S.tpls, notes: S.notes, deleted: S.meta.deleted || {}, images };
+  const d = new Date(), p2 = x => String(x).padStart(2, '0');
+  const name = `담노트_백업_${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}.json`;
+  return { name, text: JSON.stringify(data) };
+}
+async function backupOut() {
+  toast('백업 파일 만드는 중… (사진 포함)');
+  const { name, text } = await makeBackup();
+  await saveFile(name, new Blob([text], { type: 'application/json' }));
   S.meta.lastBackup = Date.now(); saveMeta(); renderLib();
 }
 async function dataURLToBlob(u) { return await (await fetch(u)).blob(); }
@@ -1872,10 +1883,13 @@ async function backupIn(file) {
   try { data = JSON.parse(await file.text()); } catch { toast('백업 파일을 읽을 수 없어요'); return; }
   if (!data || data.app !== 'memo-seojae' || typeof data.notes !== 'object') { toast('담노트 백업 파일이 아니에요'); return; }
   const notes = Object.entries(data.notes).filter(([k, v]) => /^n_[\w-]+$/.test(k) && v && typeof v === 'object');
-  const same = notes.filter(([k]) => S.notes[k]).length;
+  const localDel = S.meta.deleted || {};
+  const isNew = ([k]) => !S.notes[k] && !localDel[k];
+  const isNewer = ([k, v]) => S.notes[k] && (v.updated || 0) > (S.notes[k].updated || 0);
+  const nAdd = notes.filter(isNew).length, nUpd = notes.filter(isNewer).length;
   const ok = await dialog((b, done) => {
-    b.append(el('h3', { text: '백업을 불러올까요?' }),
-      el('p', { text: `메모 ${notes.length}개, 폴더 ${(data.folders || []).length}개가 들어 있어요.` + (same ? ` 이미 있는 메모 ${same}개는 백업본 내용으로 바뀌어요.` : ' 지금 있는 메모는 그대로 두고 추가돼요.') }),
+    b.append(el('h3', { text: '이 파일의 메모를 합칠까요?' }),
+      el('p', { text: `파일 안에 메모 ${notes.length}개가 있어요. 새 메모 ${nAdd}개를 추가하고, 이 기기보다 더 최근에 고친 메모 ${nUpd}개를 최신 내용으로 바꿔요. 이 기기에서 더 최근에 고친 메모는 그대로 둬요.` }),
       el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '취소', onclick: () => done(false) }), el('button', { class: 'btn', text: '불러오기', onclick: () => done(true) })));
   });
   if (!ok) return;
@@ -1893,16 +1907,59 @@ async function backupIn(file) {
   }
   for (const t of Array.isArray(data.templates) ? data.templates : []) if (t && t.id && !S.tpls.some(x => x.id === t.id)) S.tpls.push({ ...t, html: await migrateInlineImages(t.html) });
   saveFolders(); saveTpls();
-  let i = 0, fail = 0;
+  let i = 0, fail = 0, added = 0, updated = 0, removed = 0;
+  S.meta.deleted = S.meta.deleted || {};
   for (const [k, v] of notes) {
+    const cur = S.notes[k];
+    if (cur && (cur.updated || 0) >= (v.updated || 0)) continue;
+    if (!cur && S.meta.deleted[k] && S.meta.deleted[k] >= (v.updated || 0)) continue;
     S.notes[k] = { ...v, html: await migrateInlineImages(typeof v.html === 'string' ? v.html : '') };
-    try { await backendWrite(k, S.notes[k]); } catch { fail++; }
-    if (++i % 10 === 0) toast(`불러오는 중… (${i}/${notes.length})`);
+    try { await backendWrite(k, S.notes[k]); cur ? updated++ : added++; } catch { fail++; }
+    if (++i % 10 === 0) toast(`합치는 중… (${i})`);
   }
+  if (data.deleted && typeof data.deleted === 'object') {
+    for (const [k, t] of Object.entries(data.deleted)) {
+      if (!/^n_[\w-]+$/.test(k) || typeof t !== 'number') continue;
+      S.meta.deleted[k] = Math.max(S.meta.deleted[k] || 0, t);
+      if (S.notes[k] && (S.notes[k].updated || 0) <= t) { delete S.notes[k]; queueWrite(k, null); removed++; }
+    }
+  }
+  saveMeta();
   upgradeAllTarot(2600);
   renderAll();
-  toast(fail ? `${notes.length - fail}개를 불러왔고 ${fail}개는 저장하지 못했어요` : `메모 ${notes.length}개를 불러왔어요`);
+  toast(fail ? `${fail}개는 저장하지 못했어요` : (added + updated + removed) ? `새 메모 ${added}개 · 최신으로 바꾼 메모 ${updated}개` + (removed ? ` · 지운 메모 ${removed}개` : '') : '이미 모두 최신이에요');
 }
+function transferDialog() {
+  document.body.classList.remove('drawer');
+  const mobile = !FINE;
+  dialog((b, done) => {
+    const send = el('button', { class: 'btn', text: mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기', onclick: async () => {
+      send.disabled = true; send.textContent = '만드는 중…';
+      try {
+        const { name, text } = await makeBackup();
+        let shared = false;
+        if (mobile && navigator.canShare) {
+          for (const type of ['application/json', 'text/plain']) {
+            const f = new File([text], name, { type });
+            try { if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: name }); shared = true; break; } }
+            catch (e) { if (e && e.name === 'AbortError') { shared = true; break; } }
+          }
+        }
+        if (!shared) await saveFile(name, new Blob([text], { type: 'application/json' }));
+        S.meta.lastBackup = Date.now(); saveMeta(); renderLib();
+      } finally { send.disabled = false; send.textContent = mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기'; }
+    } });
+    const recv = el('button', { class: 'btn', text: '📥 받은 파일 불러오기', onclick: () => { done(); $('#bkFile').click(); } });
+    const step = (n, title, body, btn) => el('div', { class: 'mvstep' }, el('div', { class: 'mvn', text: n }), el('div', { class: 'mvb' }, el('b', { text: title }), el('div', { class: 'mvt', text: body }), btn || ''));
+    b.append(el('h3', { text: '📲 다른 기기로 옮기기' }),
+      el('p', { text: '메모는 기기마다 따로 저장돼서, 파일 하나로 옮겨요. 사진·스티커·폴더까지 함께 가요.' }),
+      step('1', '보내는 기기에서', mobile ? '아래 버튼을 누르고 카카오톡 「나와의 채팅」(또는 메일)을 고르세요.' : '아래 버튼으로 파일을 만든 뒤, 카카오톡 「나와의 채팅」 창에 끌어다 놓거나 메일로 보내세요.', send),
+      step('2', '받는 기기에서', '받은 파일을 기기에 저장한 다음, 담노트 메뉴 → 「다른 기기로 옮기기」 → 아래 버튼으로 그 파일을 골라요.', recv),
+      el('div', { class: 'tip', style: 'margin-top:12px', text: '💡 여러 번 옮겨도 괜찮아요. 같은 메모는 더 최근에 고친 쪽이 남고, 지운 메모는 지운 상태로 맞춰져요.' }),
+      el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() })));
+  });
+}
+$('#moveBtn').addEventListener('click', transferDialog);
 $('#bkOut').addEventListener('click', () => { document.body.classList.remove('drawer'); backupOut(); });
 $('#bkIn').addEventListener('click', () => $('#bkFile').click());
 $('#bkFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) backupIn(f); });
