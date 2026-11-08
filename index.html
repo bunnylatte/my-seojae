@@ -368,6 +368,12 @@ body.locked .toast{z-index:220}
 .dlg .tip{background:#fff8e8;border:1px solid #f1dfb3;color:#7a5b16;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.6}
 .dlg input[type=password]{width:100%;height:46px;border:1px solid var(--line);border-radius:10px;padding:0 12px;outline:0;margin:6px 0 4px}
 .dlg input[type=password]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#lib{display:flex;flex-direction:column}
+#lib>.grid{flex:none}
+.credit{text-align:center;margin:auto 0 0;padding-top:48px;font-size:12.5px;white-space:nowrap}
+.credit a{color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:999px;display:inline-block}
+.credit a:hover{color:var(--accent);background:var(--accent-soft)}
+@media (max-width:760px){.credit{padding-top:36px;font-size:12px}.credit a{padding:6px 8px}}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -407,6 +413,7 @@ body.locked .toast{z-index:220}
     <div id="chips"></div>
     <div id="banner"></div>
     <div class="grid" id="shelf"></div>
+    <footer class="credit"><a href="https://x.com/loveabunny722" target="_blank" rel="noopener">made by 🐰 BUNNYLATTE(@loveabunny722)</a></footer>
   </main>
 </div>
 
@@ -1311,7 +1318,7 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.5.1';
 let selStk = null, selImg = null, photoRange = null;
 function cleanPaperHTML(src = paper) {
   const c = src.cloneNode(true);
