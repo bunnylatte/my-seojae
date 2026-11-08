@@ -1626,8 +1626,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.0.1';
+const APP_VERSION = '2.0.2';
 const CHANGELOG = [
+  { v: '2.0.2', d: '11월 9일', items: ['💬 의견 보내기가 바뀌었어요: 📮 의견함(구글폼) 또는 𝕏 DM으로 보낼 수 있어요'] },
   { v: '2.0.1', d: '11월 9일', items: ['툴바에 「－ 행」: 표에서 필요 없는 줄 지우기', '고친 양식을 「⭐ 템플릿으로 저장」하면 그 메모의 새 페이지도 그 양식으로 추가돼요'] },
   { v: '2.0', d: '11월 8일', items: ['📄 메모 하나에 페이지를 계속 추가할 수 있어요: 맨 아래 「＋ 같은 양식으로 새 페이지」', '페이지 목록에서 이동·순서 바꾸기·삭제, PDF는 전체 페이지로도 저장'] },
   { v: '1.9', d: '11월 8일', items: ['💖 덕질 일기 보완: 덕질 종류 여러 개 선택, 무대·공연 기록, 오늘의 노래, 소비 자동 합계, 다가오는 일정', '🎬 감상 기록: 영화·드라마에 예능·음악까지, 회차·트랙 기록과 출연자 메모', '📔 만년 다이어리: 먼슬리 달력(날짜 채우기), 주차별 위클리, 습관 체크, 프리메모'] },
@@ -2438,27 +2439,64 @@ function createGuideNote() {
 $('#helpBtn').addEventListener('click', onboarding);
 
 /* ---------------- 의견 보내기 ---------------- */
-const FEEDBACK_URL = 'https://github.com/bunnylatte/my-seojae/issues/new';
+const FEEDBACK = {
+  form: 'https://docs.google.com/forms/d/e/1FAIpQLSccP2rB9VgH_hOcn8loWSsKgoarQWGY8yYRV7AKCN9gAW533w/viewform',
+  /* 미리 채우기용 질문 번호 (entry.숫자). 비어 있으면 폼만 열고 내용은 클립보드로 */
+  entry: { kind: '', text: '', device: '' },
+  x: 'https://x.com/loveabunny722',
+};
+const KIND_FORM = { '💡 원하는 기능': '기능 추가 요청', '😣 불편한 점': '불편한 점', '🐞 오류 신고': '오류 신고', '💖 칭찬': '칭찬' };
+function deviceChoice() {
+  const ua = navigator.userAgent, ipad = /ipad/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const tablet = ipad || (/android/i.test(ua) && !/mobile/i.test(ua));
+  if (tablet) return { other: ipad ? '태블릿(iOS)' : '태블릿(안드로이드)' };
+  if (IS_IOS) return { pick: '모바일(ios)' };
+  if (/android/i.test(ua)) return { pick: '모바일(안드로이드)' };
+  return { pick: 'PC' };
+}
 function feedbackDialog() {
   document.body.classList.remove('drawer');
   dialog((b, done) => {
     let kind = '💡 원하는 기능';
-    const kinds = ['💡 원하는 기능', '😣 불편한 점', '🐞 오류 신고', '💖 칭찬'];
+    const kinds = Object.keys(KIND_FORM);
     const fk = el('div', { class: 'fbk' });
     const paint = () => [...fk.children].forEach(x => x.classList.toggle('on', x.textContent === kind));
     kinds.forEach(k => fk.append(el('button', { text: k, onclick: () => { kind = k; paint(); } }))); paint();
     const ta = el('textarea', { placeholder: '자유롭게 적어 주세요. 어떤 화면에서 무엇을 하다가 그랬는지 알려주시면 더 빨리 고칠 수 있어요.' });
-    const env = () => `\n\n---\n버전 ${APP_VERSION} · ${IS_STANDALONE ? '설치 앱' : '브라우저'} · ${navigator.userAgent}`;
-    b.append(el('h3', { text: '💬 의견 보내기' }), el('p', { text: '써보면서 불편했던 점이나 갖고 싶은 기능을 알려주세요. 다음 업데이트에 반영할게요.' }), fk, ta,
-      el('p', { style: 'font-size:12.5px;margin:8px 0 0', text: '「보내기」를 누르면 GitHub 의견 게시판이 열리고 내용이 미리 채워져요. (GitHub 계정이 필요해요. 계정이 없으면 「내용 복사」 후 만든 사람에게 전해 주세요)' }),
-      el('div', { class: 'row' },
-        el('button', { class: 'btn ghost', text: '내용 복사', onclick: async () => { try { await navigator.clipboard.writeText(`[${kind}] ${ta.value}${env()}`); toast('복사했어요'); } catch { toast('복사가 허용되지 않았어요'); } } }),
-        el('button', { class: 'btn', text: '보내기', onclick: () => {
-          const text = ta.value.trim(); if (!text) { toast('내용을 적어 주세요'); ta.focus(); return; }
-          const title = `[${kind.replace(/^\S+\s/, '')}] ${text.split('\n')[0].slice(0, 40)}`;
-          const url = `${FEEDBACK_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(text + env())}`;
-          window.open(url, '_blank', 'noopener'); done();
-        } })));
+    const dev = deviceChoice();
+    const envLine = () => `[담노트 v${APP_VERSION} · ${IS_STANDALONE ? '설치 앱' : '브라우저'} · ${dev.pick || dev.other}]`;
+    const fullText = () => `${ta.value.trim()}\n\n${envLine()}`;
+    const need = () => { if (!ta.value.trim()) { toast('내용을 적어 주세요'); ta.focus(); return false; } return true; };
+    const copy = async t => { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } };
+    const toForm = async () => {
+      if (!need()) return;
+      const E = FEEDBACK.entry, q = new URLSearchParams();
+      if (E.kind && E.text) {
+        q.set('usp', 'pp_url');
+        q.set(`entry.${E.kind}`, KIND_FORM[kind]);
+        q.set(`entry.${E.text}`, fullText());
+        if (E.device) { if (dev.pick) q.set(`entry.${E.device}`, dev.pick); else { q.set(`entry.${E.device}`, '__other_option__'); q.set(`entry.${E.device}.other_option_response`, dev.other); } }
+        window.open(`${FEEDBACK.form}?${q}`, '_blank', 'noopener');
+      } else {
+        const ok = await copy(`[${KIND_FORM[kind]}]\n${fullText()}`);
+        window.open(FEEDBACK.form, '_blank', 'noopener');
+        toast(ok ? '내용을 복사했어요. 폼의 내용 칸에 붙여넣어 주세요' : '폼이 열렸어요. 내용을 옮겨 적어 주세요');
+      }
+      done();
+    };
+    const toX = async () => {
+      if (!need()) return;
+      const ok = await copy(`[담노트 ${KIND_FORM[kind]}]\n${fullText()}`);
+      window.open(FEEDBACK.x, '_blank', 'noopener');
+      toast(ok ? '내용을 복사했어요. 프로필의 ✉️ 메시지 버튼을 눌러 붙여넣어 주세요' : 'X 프로필이 열렸어요. ✉️ 메시지로 보내 주세요');
+      done();
+    };
+    b.append(el('h3', { text: '💬 의견 보내기' }), el('p', { text: '써보면서 불편했던 점이나 갖고 싶은 기능을 알려주세요. 다음 업데이트에 담아볼게요.' }), fk, ta,
+      el('div', { class: 'tip', style: 'margin-top:10px;font-size:12.5px', text: '📮 「의견함으로 보내기」는 구글 계정으로 로그인한 뒤 제출할 수 있어요. 악성 의견 방지를 위해 이메일이 함께 기록되고, 다른 용도로는 쓰지 않아요. 로그인이 싫다면 X DM으로 보내주세요.' }),
+      el('div', { class: 'row', style: 'flex-wrap:wrap' },
+        el('button', { class: 'btn ghost', text: '취소', onclick: () => done() }),
+        el('button', { class: 'btn ghost', text: '𝕏 DM으로 보내기', onclick: toX }),
+        el('button', { class: 'btn', text: '📮 의견함으로 보내기', onclick: toForm })));
     setTimeout(() => ta.focus(), 50);
   });
 }
