@@ -469,6 +469,21 @@ body.locked .toast{z-index:220}
 .pfile{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .pfile summary{cursor:pointer;color:var(--muted);font-size:13px}
 .pfile p{margin:8px 0 0;font-size:13px}
+.mainmenu{display:flex;flex-direction:column;gap:2px;margin:0 -10px}
+.mainmenu button{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;text-align:left;color:#4a4853;font-size:13.5px;position:relative}
+.mainmenu button span{width:20px;text-align:center}
+.mainmenu button:hover{background:#f0eee9;color:var(--ink)}
+.mainmenu button.dot::after{content:"";position:absolute;left:24px;top:8px;width:7px;height:7px;border-radius:50%;background:#e0546b}
+.mlist{display:flex;flex-direction:column;margin-top:4px}
+.msep{font-size:11.5px;font-weight:700;color:var(--muted);margin:14px 2px 4px}
+.mrow{display:flex;align-items:center;gap:12px;padding:11px 8px;border-radius:12px;text-align:left}
+.mrow:hover{background:#f6f4f0}
+.mrow .mic{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);display:grid;place-items:center;font-size:18px;flex:none}
+.mrow .mtx{flex:1;min-width:0;display:flex;flex-direction:column}
+.mrow .mtx small{color:var(--muted);font-size:12.5px;margin-top:1px}
+.mrow .mchev{color:#c3c0c9;font-size:20px}
+.mbadge{background:#e0546b;color:#fff;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 7px}
+.mfoot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -491,10 +506,11 @@ body.locked .toast{z-index:220}
     <div id="folderNav"></div>
     <button class="addf" id="addFolder">＋ 새 폴더</button>
     <div class="side-foot">
-      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="moveBtn">📲 다른 기기와 맞추기</button><button id="lockBtn">🔒 앱 잠금</button><button id="newsBtn">🎉 업데이트 소식</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
+      <div class="mainmenu"><button id="supportBtn"><span>🛟</span>사용자 지원</button><button id="settingsBtn"><span>⚙️</span>설정</button></div>
+      <div class="bk" hidden><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="moveBtn">📲 다른 기기와 맞추기</button><button id="lockBtn">🔒 앱 잠금</button><button id="newsBtn">🎉 업데이트 소식</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
       <input type="file" id="bkFile" accept=".json,application/json,text/plain,.txt" hidden>
-      <div class="st" id="storeState"><i></i><span>불러오는 중…</span></div>
-      <div class="ver" id="verLabel"></div>
+      <div class="st" id="storeState" hidden><i></i><span>불러오는 중…</span></div>
+      <div class="ver" id="verLabel" hidden></div>
     </div>
   </aside>
   <main id="lib">
@@ -1023,7 +1039,7 @@ function counts() {
   }
   return c;
 }
-function renderAll() { renderSide(); renderLib(); renderChips(); }
+function renderAll() { renderSide(); renderLib(); renderChips(); if (typeof paintMenuBadges === 'function') paintMenuBadges(); }
 function renderSide() {
   const c = counts();
   const fixed = $('#fixedNav'); fixed.replaceChildren();
@@ -1651,8 +1667,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const CHANGELOG = [
+  { v: '2.3', d: '11월 9일', items: ['🧹 메뉴 정리: 「🛟 사용자 지원」과 「⚙️ 설정」 두 개로 묶었어요'] },
   { v: '2.2', d: '11월 9일', items: ['📲 기기 연결 보완: 집 공유기·LTE에서도 연결되도록 중계 서버 추가', '🔒 연결할 때 두 기기에 같은 그림 3개가 뜨면 「맞아요」를 눌러 확인해요'] },
   { v: '2.1', d: '11월 9일', items: ['📲 다른 기기와 맞추기: 한쪽에 뜬 숫자 6자리를 다른 쪽에 입력하면 메모·사진이 서로 합쳐져요 (로그인·파일 필요 없음)'] },
   { v: '2.0.2', d: '11월 9일', items: ['💬 의견 보내기가 바뀌었어요: 📮 의견함(구글폼) 또는 𝕏 DM으로 보낼 수 있어요'] },
@@ -2797,6 +2814,51 @@ function feedbackDialog() {
 }
 $('#fbBtn').addEventListener('click', feedbackDialog);
 $('#verLabel').textContent = `담노트 DAM:NOTE v${APP_VERSION}`;
+/* ---------------- 사용자 지원 · 설정 ---------------- */
+function menuSheet(title, sub, items, foot) {
+  document.body.classList.remove('drawer');
+  dialog((b, done) => {
+    b.append(el('h3', { text: title }));
+    if (sub) b.append(el('p', { text: sub }));
+    const list = el('div', { class: 'mlist' });
+    for (const it of items) {
+      if (!it) continue;
+      if (it.sep) { list.append(el('div', { class: 'msep', text: it.sep })); continue; }
+      list.append(el('button', { class: 'mrow', onclick: () => { done(); setTimeout(it.go, 60); } },
+        el('span', { class: 'mic', text: it.icon }),
+        el('span', { class: 'mtx' }, el('b', { text: it.title }), it.desc ? el('small', { text: it.desc }) : null),
+        it.badge ? el('span', { class: 'mbadge', text: it.badge }) : null,
+        el('span', { class: 'mchev', text: '›' })));
+    }
+    b.append(list);
+    if (foot) b.append(el('div', { class: 'mfoot', text: foot }));
+    b.append(el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() })));
+  });
+}
+function supportSheet() {
+  const unseen = S.meta.seenVersion !== APP_VERSION;
+  menuSheet('🛟 사용자 지원', null, [
+    { icon: '🎉', title: '업데이트 소식', desc: `지금 버전 v${APP_VERSION} · 바뀐 점 보기`, badge: unseen ? 'NEW' : null, go: () => { S.meta.seenVersion = APP_VERSION; saveMeta(); renderLib(); changelogDialog(); } },
+    { icon: '❓', title: '사용 안내', desc: '처음 화면 안내 다시 보기 · 사용법 메모 받기', go: onboarding },
+    { icon: '💬', title: '의견 보내기', desc: '불편한 점 · 원하는 기능 · 오류 신고', go: feedbackDialog },
+  ], 'made by 🐰 BUNNYLATTE(@loveabunny722)');
+}
+function settingsSheet() {
+  const last = S.meta.lastBackup ? Math.floor((Date.now() - S.meta.lastBackup) / 864e5) : null;
+  const canInstall = !!installEvt, iosHint = IS_IOS && !IS_STANDALONE;
+  menuSheet('⚙️ 설정', null, [
+    { sep: '기기 · 보안' },
+    { icon: '📲', title: '다른 기기와 맞추기', desc: '숫자 6자리로 PC·휴대폰 메모 합치기', go: transferDialog },
+    { icon: S.meta.lock ? '🔒' : '🔓', title: '앱 잠금', desc: S.meta.lock ? '켜짐 · PIN으로 잠겨 있어요' : '꺼짐 · PIN으로 메모 지키기', go: lockSettings },
+    { sep: '백업' },
+    { icon: '⬇', title: '백업 저장', desc: last == null ? '아직 백업한 적이 없어요' : last === 0 ? '오늘 백업했어요' : `마지막 백업 ${last}일 전`, go: backupOut },
+    { icon: '⬆', title: '백업 불러오기', desc: '백업 파일의 메모를 이 기기에 합치기', go: () => $('#bkFile').click() },
+    ...(canInstall || iosHint ? [{ sep: '앱' }, canInstall ? { icon: '📲', title: '앱으로 설치하기', desc: '바탕화면·작업 표시줄에서 바로 열기', go: () => $('#installBtn').click() } : { icon: '📲', title: '홈 화면에 추가하기', desc: '아이폰은 홈 화면에 추가해야 메모가 안전하게 보관돼요', go: iosInstallDialog }] : []),
+  ], `담노트 DAM:NOTE v${APP_VERSION} · 이 기기에 저장 중 · 인터넷 없이도 동작`);
+}
+$('#supportBtn').addEventListener('click', supportSheet);
+$('#settingsBtn').addEventListener('click', settingsSheet);
+function paintMenuBadges() { const b = $('#supportBtn'); if (b) b.classList.toggle('dot', S.meta.seenVersion !== APP_VERSION && S.mode !== 'loading'); }
 
 /* ---------------- 앱 잠금 (PIN) ---------------- */
 const b64e = u8 => btoa(String.fromCharCode(...u8));
