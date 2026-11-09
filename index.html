@@ -459,6 +459,12 @@ body.locked .toast{z-index:220}
 .pok,.perr{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
 .pok{background:#3f9a74}.perr{background:var(--danger)}
 .psum{text-align:center;color:var(--ink);font-weight:500;margin:4px 0 0}
+.psas{text-align:center;margin-top:10px}
+.pemo{font-size:44px;letter-spacing:10px;margin:4px 0 2px}
+.psas p{margin:6px 0 0;color:#5d5a66}
+.prelay{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:12.5px;color:#5d5a66}
+.prelay .linkbtn{flex:none;font-size:12.5px}
+.pnote{font-size:11.5px;color:var(--muted);margin:10px 0 0;line-height:1.6}
 .pdiag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9a97a3;text-align:center;margin-top:6px;user-select:all}
 .pfile{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .pfile summary{cursor:pointer;color:var(--muted);font-size:13px}
@@ -1645,8 +1651,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.1.1';
+const APP_VERSION = '2.2';
 const CHANGELOG = [
+  { v: '2.2', d: '11월 9일', items: ['📲 기기 연결 보완: 집 공유기·LTE에서도 연결되도록 중계 서버 추가', '🔒 연결할 때 두 기기에 같은 그림 3개가 뜨면 「맞아요」를 눌러 확인해요'] },
   { v: '2.1', d: '11월 9일', items: ['📲 다른 기기와 맞추기: 한쪽에 뜬 숫자 6자리를 다른 쪽에 입력하면 메모·사진이 서로 합쳐져요 (로그인·파일 필요 없음)'] },
   { v: '2.0.2', d: '11월 9일', items: ['💬 의견 보내기가 바뀌었어요: 📮 의견함(구글폼) 또는 𝕏 DM으로 보낼 수 있어요'] },
   { v: '2.0.1', d: '11월 9일', items: ['툴바에 「－ 행」: 표에서 필요 없는 줄 지우기', '고친 양식을 「⭐ 템플릿으로 저장」하면 그 메모의 새 페이지도 그 양식으로 추가돼요'] },
@@ -2310,7 +2317,9 @@ async function mergeData(data) {
 const PAIR_PREFIX = 'damnote-v1-';
 function sigConf() {
   let o = { host: '0.peerjs.com', port: 443, secure: true, path: '/peerjs', key: 'peerjs',
-    ice: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }] };
+    ice: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.relay.metered.ca:80' }] };
+  const R = S.meta.relay;
+  if (R && R.u && R.p) o.ice = [...o.ice, { urls: ['turn:global.relay.metered.ca:80', 'turn:global.relay.metered.ca:80?transport=tcp', 'turn:global.relay.metered.ca:443', 'turns:global.relay.metered.ca:443?transport=tcp'], username: R.u, credential: R.p }];
   try { const t = localStorage.getItem('damnote:sig'); if (t) o = { ...o, ...JSON.parse(t) }; } catch {}
   return o;
 }
@@ -2329,7 +2338,7 @@ function pairSession(role, code, ui) {
   function cleanup() { closed = true; clearInterval(hb); clearTimeout(timer); try { dc && dc.close(); } catch {} try { pc && pc.close(); } catch {} try { ws && ws.close(); } catch {} }
   function fail(reason) {
     if (closed || finished) return;
-    const d = `진단 ${role === 'host' ? 'H' : 'J'}/${diag.step} · 나 h${diag.me.host} s${diag.me.srflx} r${diag.me.relay} · 상대 h${diag.peer.host} s${diag.peer.srflx} r${diag.peer.relay} · ${diag.ice}`;
+    const d = `진단 ${role === 'host' ? 'H' : 'J'}/${diag.step} · 키${S.meta.relay ? 'O' : 'X'} · 나 h${diag.me.host} s${diag.me.srflx} r${diag.me.relay} · 상대 h${diag.peer.host} s${diag.peer.srflx} r${diag.peer.relay} · ${diag.ice}`;
     cleanup(); ui.error(reason, d);
   }
   function makePC() {
@@ -2345,7 +2354,15 @@ function pairSession(role, code, ui) {
   function setupDC(ch) {
     dc = ch;
     dc.bufferedAmountLowThreshold = 256 * 1024;
-    dc.onopen = () => { clearTimeout(timer); diag.step = 'dc'; ui.syncing(); startSync().catch(() => fail('closed')); };
+    dc.onopen = async () => {
+      clearTimeout(timer); diag.step = 'dc';
+      const sas = await sasOf(pc);
+      if (role === 'host') ui.confirm(sas, async ok => {
+        if (!ok) { fail('rejected'); return; }
+        ui.syncing(); await sendMsg({ k: 'ok' }); startSync().catch(() => fail('closed'));
+      });
+      else ui.confirmWait(sas);
+    };
     dc.onmessage = e => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m.t !== 'c') return;
@@ -2371,6 +2388,7 @@ function pairSession(role, code, ui) {
     await sendMsg({ k: 'hello', notes, deleted: S.meta.deleted || {}, images });
   }
   async function onMsg(m) {
+    if (m.k === 'ok' && role === 'join') { ui.syncing(); await startSync(); return; }
     if (m.k === 'hello') {
       const theirN = m.notes || {}, theirD = m.deleted || {}, theirI = new Set(m.images || []);
       const out = {};
@@ -2385,8 +2403,9 @@ function pairSession(role, code, ui) {
       for (const id of need) { try { const b = await idbDo('img', 'readonly', st => st.get(id)); if (b) images[id] = await blobToDataURL(b); } catch {} }
       sent = Object.keys(out).length;
       ui.syncing(sent ? `메모 ${sent}개를 보내는 중…` : null);
-      await sendMsg({ k: 'data', app: 'memo-seojae', folders: S.folders, templates: S.tpls, notes: out, deleted: S.meta.deleted || {}, images });
+      await sendMsg({ k: 'data', app: 'memo-seojae', relay: S.meta.relay || null, folders: S.folders, templates: S.tpls, notes: out, deleted: S.meta.deleted || {}, images });
     } else if (m.k === 'data') {
+      if (m.relay && m.relay.u && m.relay.p && !S.meta.relay) { S.meta.relay = { u: String(m.relay.u).slice(0, 100), p: String(m.relay.p).slice(0, 100) }; saveMeta(); }
       result = await mergeData(m);
       gotData = true;
       await sendMsg({ k: 'done' });
@@ -2443,7 +2462,15 @@ function pairSession(role, code, ui) {
   };
   return sess;
 }
+const SAS_EMOJI = ['🐰', '🐻', '🐱', '🐶', '🦊', '🐼', '🐨', '🐯', '🐸', '🐧', '🐥', '🦄', '🐙', '🐳', '🦋', '🐝', '🌸', '🌻', '🍀', '🍓', '🍒', '🍑', '🍋', '🍩', '🍰', '⭐', '🌙', '☀️', '🌈', '❄️', '🔥', '🎈'];
+async function sasOf(pc) {
+  const fp = d => ((/a=fingerprint:\S+ ([0-9A-F:]+)/i.exec((d && d.sdp) || '') || [])[1] || '').toUpperCase();
+  const pair = [fp(pc.localDescription), fp(pc.remoteDescription)].sort().join('|');
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pair)));
+  return [h[0], h[1], h[2]].map(b => SAS_EMOJI[b % 32]);
+}
 const PAIR_ERR = {
+  rejected: '연결을 취소했어요. 그림이 서로 달랐다면 다른 기기가 끼어들었을 수 있어요. 새 코드로 다시 해 주세요.',
   server: '연결 서버에 닿지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.',
   noanswer: '그 코드의 기기를 찾지 못했어요. 상대 기기에서 코드 화면이 켜져 있는지, 숫자가 맞는지 확인해 주세요.',
   ice: '두 기기를 직접 연결하지 못했어요. 두 기기를 같은 와이파이에 연결하고 다시 해보거나, 아래 「파일로 옮기기」를 이용해 주세요.',
@@ -2451,6 +2478,25 @@ const PAIR_ERR = {
   timeout: '10분 동안 연결이 없어서 코드를 닫았어요. 다시 띄워 주세요.',
   taken: '코드를 만들지 못했어요. 다시 시도해 주세요.',
 };
+function relayKeyDialog() {
+  return dialog((b, done) => {
+    const ta = el('textarea', { placeholder: 'Username: …\nPassword: …', style: 'min-height:90px;font-family:ui-monospace,Menlo,monospace' });
+    const save = () => {
+      const t = ta.value.trim();
+      const u = (/user(?:name)?\s*[:=]\s*(\S+)/i.exec(t) || [])[1], p = (/(?:pass(?:word)?|credential)\s*[:=]\s*(\S+)/i.exec(t) || [])[1];
+      let uu = u, pp = p;
+      if (!uu || !pp) { const parts = t.split(/[\s:]+/).filter(Boolean); if (parts.length === 2) [uu, pp] = parts; }
+      if (!uu || !pp || !/^[\w.-]{6,100}$/.test(uu) || !/^\S{6,100}$/.test(pp)) { toast('키 모양이 맞지 않아요. 디스코드에 올라온 두 줄을 그대로 붙여넣어 주세요'); return; }
+      S.meta.relay = { u: uu, p: pp }; saveMeta(); toast('연결 키를 저장했어요'); done(true);
+    };
+    b.append(el('h3', { text: '🔑 연결 키 넣기' }),
+      el('p', { text: '디스코드에 공유된 연결 키(Username, Password 두 줄)를 그대로 붙여넣어 주세요. 이 기기에만 저장되고, 다른 기기와 한 번 맞추면 그 기기에도 자동으로 옮겨가요.' }), ta,
+      el('div', { class: 'row' },
+        ...(S.meta.relay ? [el('button', { class: 'btn ghost', text: '키 지우기', onclick: () => { delete S.meta.relay; saveMeta(); toast('연결 키를 지웠어요'); done(true); } })] : []),
+        el('button', { class: 'btn ghost', text: '취소', onclick: () => done(false) }), el('button', { class: 'btn', text: '저장', onclick: save })));
+    setTimeout(() => ta.focus(), 50);
+  });
+}
 function transferDialog() {
   document.body.classList.remove('drawer');
   const mobile = !FINE;
@@ -2468,12 +2514,27 @@ function transferDialog() {
           el('button', { class: 'pbtn', onclick: () => startHost(0) }, el('span', { class: 'pic', text: '🔢' }), el('b', { text: '내 코드 띄우기' }), el('small', { text: '이 기기에 숫자 6자리를 띄워요' })),
           el('button', { class: 'pbtn', onclick: showJoin }, el('span', { class: 'pic', text: '⌨️' }), el('b', { text: '코드 입력하기' }), el('small', { text: '다른 기기의 숫자를 입력해요' }))),
         el('div', { class: 'tip', style: 'margin-top:12px', text: IS_IOS ? '📱 아이폰은 꼭 홈 화면에 추가한 담노트에서 해 주세요. 연결하는 동안(몇 초) 화면을 켜두세요.' : '💡 연결하는 동안(몇 초) 두 기기 모두 담노트 화면을 켜두세요. 같은 메모는 더 최근에 고친 쪽이 남아요.' }),
+        relayRow(),
+        el('p', { class: 'pnote', text: '연결이 어려운 네트워크에서는 중계 서버(Metered)를 거쳐요. 이때 기기의 IP 주소가 전달될 수 있지만, 메모와 사진은 두 기기만 열 수 있게 암호화돼서 오가요.' }),
         fileSection());
     };
     const ui = box => ({
       waiting: () => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: '다른 기기에서 「코드 입력하기」로 이 숫자를 입력해 주세요' })),
       connecting: () => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: '연결하는 중… 화면을 켜둔 채 기다려 주세요' })),
-      syncing: t => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: t || '메모를 맞추는 중…' })),
+      syncing: t => { const s = box.parentElement && box.parentElement.querySelector('.psas'); if (s) s.remove(); box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: t || '메모를 맞추는 중…' })); },
+      confirm: (sas, cb) => {
+        box.replaceChildren();
+        box.before(el('div', { class: 'psas' }, el('div', { class: 'pemo', text: sas.join(' ') }),
+          el('p', { text: '다른 기기에도 똑같은 그림 3개가 보이나요?' }),
+          el('div', { class: 'row', style: 'justify-content:center;margin-top:6px' },
+            el('button', { class: 'btn ghost', text: '아니에요', onclick: () => cb(false) }),
+            el('button', { class: 'btn', text: '맞아요, 연결', onclick: e => { e.currentTarget.disabled = true; cb(true); } }))));
+      },
+      confirmWait: sas => {
+        box.replaceChildren();
+        box.before(el('div', { class: 'psas' }, el('div', { class: 'pemo', text: sas.join(' ') }),
+          el('p', { text: '코드를 띄운 기기에도 같은 그림이 보이면, 그 기기에서 「맞아요, 연결」을 눌러 주세요.' })));
+      },
       done: (r, sentN) => {
         box.replaceChildren(el('div', { class: 'pok', text: '✓' }), el('span', { text: '두 기기를 맞췄어요!' }));
         const parts = [];
@@ -2512,6 +2573,11 @@ function transferDialog() {
       inp.addEventListener('input', () => { const d = inp.value.replace(/\D/g, '').slice(0, 6); inp.value = d.length > 3 ? d.slice(0, 3) + ' ' + d.slice(3) : d; if (d.length === 6) go(); });
       body.replaceChildren(el('p', { text: '다른 기기에 떠 있는 숫자 6자리를 입력해 주세요.' }), inp, el('div', { class: 'row', style: 'justify-content:center;margin-top:10px' }, btn), box);
       setTimeout(() => inp.focus(), 50);
+    }
+    function relayRow() {
+      const has = !!(S.meta.relay && S.meta.relay.u);
+      return el('div', { class: 'prelay' }, el('span', { text: has ? '🔑 연결 키 등록됨' : '🔑 연결 키 없음 · 집 공유기나 LTE에서 연결이 안 되면 디스코드에 공유된 연결 키를 넣어 주세요' }),
+        el('button', { class: 'linkbtn', text: has ? '바꾸기' : '키 넣기', onclick: async () => { await relayKeyDialog(); showHome(); } }));
     }
     function fileSection() {
       const send = el('button', { class: 'btn ghost', text: mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기', onclick: async () => {
