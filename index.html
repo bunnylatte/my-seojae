@@ -484,6 +484,9 @@ body.locked .toast{z-index:220}
 .mrow .mchev{color:#c3c0c9;font-size:20px}
 .mbadge{background:#e0546b;color:#fff;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 7px}
 .mfoot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
+.movedban{background:#eef0ff;border-color:#dfe2fb;color:#2b2a33}
+.movedban a{color:var(--accent);font-weight:700}
+.dlg a.btn{text-decoration:none}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -1097,6 +1100,11 @@ function renderLib() {
         el('button', { class: 'linkbtn', text: '지난 업데이트 모두 보기', onclick: () => { S.meta.seenVersion = APP_VERSION; saveMeta(); renderLib(); changelogDialog(); } })));
     }
   }
+  ban.append(el('div', { class: 'banner movedban' },
+    el('b', { text: '📦 담노트가 새 주소로 이사했어요! ' }),
+    el('a', { href: 'https://ssdam-lab.github.io/damnote/', target: '_blank', rel: 'noopener', text: 'ssdam-lab.github.io/damnote' }),
+    el('div', { style: 'margin-top:6px', text: '이 주소는 곧 닫혀요. 메모를 새 주소로 옮겨 주세요. ' }),
+    el('button', { class: 'linkbtn', text: '메모 옮기는 법 보기', onclick: movedHelp })));
   if (S.loadError) ban.append(el('div', { class: 'banner', text: '저장소를 열지 못했어요. 시크릿 창이 아닌 일반 창에서 열어 주세요. (시크릿 창에서는 창을 닫으면 메모가 사라져요)' }));
   const nNotes = Object.keys(S.notes).length, last = S.meta.lastBackup || 0, days = Math.floor((Date.now() - last) / 864e5);
   if (S.mode !== 'loading' && nNotes >= 3 && days >= 7) {
@@ -2999,6 +3007,20 @@ $('#q').addEventListener('input', e => { S.q = e.target.value; $('#q2').value = 
 window.addEventListener('beforeunload', () => { if (saveT) commit(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && saveT) commit(); });
 init();
+function movedHelp() {
+  dialog((bx, done) => {
+    const ol = (...items) => { const o = el('ol', { style: 'padding-left:20px;line-height:1.8;margin:6px 0 0;color:#4a4853' }); items.forEach(t => o.append(el('li', { text: t }))); return o; };
+    bx.append(el('h3', { text: '📦 새 주소로 메모 옮기기' }),
+      el('p', { text: '새 주소: https://ssdam-lab.github.io/damnote/' }),
+      el('b', { text: '🖥 PC (2분)' }),
+      ol('새 주소를 새 탭으로 열어요.', '이 탭(예전 주소): ⚙️ 설정 → 다른 기기와 맞추기 → 「내 코드 띄우기」', '새 주소 탭: ⚙️ 설정 → 다른 기기와 맞추기 → 「코드 입력하기」에 숫자 입력', '두 탭에 같은 그림이 보이면 이 탭에서 「맞아요, 연결」'),
+      el('p', { style: 'margin-top:6px', text: '또는 이 탭에서 ⚙️ 설정 → 백업 저장, 새 주소에서 ⚙️ 설정 → 백업 불러오기를 해도 돼요.' }),
+      el('b', { text: '📱 아이폰' }),
+      ol('Safari로 새 주소를 열고 공유 버튼 → 「홈 화면에 추가」', 'PC를 먼저 옮긴 뒤, 새 아이폰 앱과 PC 새 주소를 「다른 기기와 맞추기」로 맞추면 끝'),
+      el('p', { style: 'margin-top:6px', text: '다 옮긴 뒤에는 예전 홈 화면 아이콘·바탕화면 앱을 지우고 새 주소로 설치해 주세요.' }),
+      el('div', { class: 'row' }, el('a', { class: 'btn', href: 'https://ssdam-lab.github.io/damnote/', target: '_blank', rel: 'noopener', text: '새 주소 열기' }), el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() })));
+  });
+}
 function changelogDialog() {
   document.body.classList.remove('drawer');
   dialog((b, done) => {
