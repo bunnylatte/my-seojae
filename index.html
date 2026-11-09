@@ -444,6 +444,24 @@ body.locked .toast{z-index:220}
 .pgi:disabled{opacity:.3}
 .pgi.del:hover{color:var(--danger)}
 @media print{#printArea .paper{break-inside:auto}}
+.pbig{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.pbtn{border:1px solid var(--line);border-radius:14px;padding:16px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;transition:border-color .12s,transform .12s}
+.pbtn:hover{border-color:var(--accent);transform:translateY(-2px)}
+.pbtn .pic{font-size:28px}
+.pbtn small{color:var(--muted);font-size:12px;text-align:center}
+.pcode{font-family:var(--ui);font-size:44px;font-weight:700;letter-spacing:8px;text-align:center;color:var(--accent);margin:10px 0 6px;user-select:all}
+.pinput{width:100%;height:58px;border:2px solid var(--line);border-radius:14px;text-align:center;font-size:30px;letter-spacing:8px;font-weight:700;outline:0;font-family:var(--ui)}
+.pinput:focus{border-color:var(--accent)}
+.pstat{display:flex;align-items:center;justify-content:center;gap:10px;min-height:40px;margin-top:12px;color:#5d5a66;font-size:14px;text-align:center}
+.pstat:empty{display:none}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid var(--accent-soft);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pok,.perr{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
+.pok{background:#3f9a74}.perr{background:var(--danger)}
+.psum{text-align:center;color:var(--ink);font-weight:500;margin:4px 0 0}
+.pfile{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.pfile summary{cursor:pointer;color:var(--muted);font-size:13px}
+.pfile p{margin:8px 0 0;font-size:13px}
 #printArea{display:none}
 @page{size:A4;margin:12mm 0}
 @media print{
@@ -466,7 +484,7 @@ body.locked .toast{z-index:220}
     <div id="folderNav"></div>
     <button class="addf" id="addFolder">＋ 새 폴더</button>
     <div class="side-foot">
-      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="moveBtn">📲 다른 기기로 옮기기</button><button id="lockBtn">🔒 앱 잠금</button><button id="newsBtn">🎉 업데이트 소식</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
+      <div class="bk"><button id="installBtn" hidden>📲 앱으로 설치하기</button><button id="iosInstallBtn" hidden>📲 홈 화면에 추가하기</button><button id="moveBtn">📲 다른 기기와 맞추기</button><button id="lockBtn">🔒 앱 잠금</button><button id="newsBtn">🎉 업데이트 소식</button><button id="helpBtn">❓ 사용 안내</button><button id="fbBtn">💬 의견 보내기</button><button id="bkOut">⬇ 백업 저장</button><button id="bkIn">⬆ 백업 불러오기</button></div>
       <input type="file" id="bkFile" accept=".json,application/json,text/plain,.txt" hidden>
       <div class="st" id="storeState"><i></i><span>불러오는 중…</span></div>
       <div class="ver" id="verLabel"></div>
@@ -1626,8 +1644,9 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.0.2';
+const APP_VERSION = '2.1';
 const CHANGELOG = [
+  { v: '2.1', d: '11월 9일', items: ['📲 다른 기기와 맞추기: 한쪽에 뜬 숫자 6자리를 다른 쪽에 입력하면 메모·사진이 서로 합쳐져요 (로그인·파일 필요 없음)'] },
   { v: '2.0.2', d: '11월 9일', items: ['💬 의견 보내기가 바뀌었어요: 📮 의견함(구글폼) 또는 𝕏 DM으로 보낼 수 있어요'] },
   { v: '2.0.1', d: '11월 9일', items: ['툴바에 「－ 행」: 표에서 필요 없는 줄 지우기', '고친 양식을 「⭐ 템플릿으로 저장」하면 그 메모의 새 페이지도 그 양식으로 추가돼요'] },
   { v: '2.0', d: '11월 8일', items: ['📄 메모 하나에 페이지를 계속 추가할 수 있어요: 맨 아래 「＋ 같은 양식으로 새 페이지」', '페이지 목록에서 이동·순서 바꾸기·삭제, PDF는 전체 페이지로도 저장'] },
@@ -2242,10 +2261,16 @@ async function backupIn(file) {
   });
   if (!ok) return;
   toast('불러오는 중…');
+  const r = await mergeData(data);
+  toast(r.fail ? `${r.fail}개는 저장하지 못했어요` : (r.added + r.updated + r.removed) ? `새 메모 ${r.added}개 · 최신으로 바꾼 메모 ${r.updated}개` + (r.removed ? ` · 지운 메모 ${r.removed}개` : '') : '이미 모두 최신이에요');
+}
+async function mergeData(data) {
+  const notes = Object.entries(data.notes || {}).filter(([k, v]) => /^n_[\w-]+$/.test(k) && v && typeof v === 'object');
+  let imgs = 0;
   if (data.images && typeof data.images === 'object') {
     for (const [id, u] of Object.entries(data.images)) {
       if (!/^[\w-]+$/.test(id) || typeof u !== 'string' || !u.startsWith('data:image/')) continue;
-      try { const b = await dataURLToBlob(u); await idbDo('img', 'readwrite', st => st.put(b, id)); delete IMG_URL[id]; } catch {}
+      try { const b = await dataURLToBlob(u); await idbDo('img', 'readwrite', st => st.put(b, id)); delete IMG_URL[id]; imgs++; } catch {}
     }
   }
   for (const f of Array.isArray(data.folders) ? data.folders : []) {
@@ -2266,7 +2291,7 @@ async function backupIn(file) {
     else { nv.html = await migrateInlineImages(typeof v.html === 'string' ? v.html : ''); delete nv.pages; }
     S.notes[k] = normNote(nv);
     try { await backendWrite(k, S.notes[k]); cur ? updated++ : added++; } catch { fail++; }
-    if (++i % 10 === 0) toast(`합치는 중… (${i})`);
+    ++i;
   }
   if (data.deleted && typeof data.deleted === 'object') {
     for (const [k, t] of Object.entries(data.deleted)) {
@@ -2278,37 +2303,230 @@ async function backupIn(file) {
   saveMeta();
   upgradeAllTarot(2600);
   renderAll();
-  toast(fail ? `${fail}개는 저장하지 못했어요` : (added + updated + removed) ? `새 메모 ${added}개 · 최신으로 바꾼 메모 ${updated}개` + (removed ? ` · 지운 메모 ${removed}개` : '') : '이미 모두 최신이에요');
+  return { added, updated, removed, fail, imgs };
 }
+/* ---------------- 기기 연결 (숫자 6자리 · 기기끼리 직접) ---------------- */
+const PAIR_PREFIX = 'damnote-v1-';
+function sigConf() {
+  let o = { host: '0.peerjs.com', port: 443, secure: true, path: '/peerjs', key: 'peerjs',
+    ice: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }] };
+  try { const t = localStorage.getItem('damnote:sig'); if (t) o = { ...o, ...JSON.parse(t) }; } catch {}
+  return o;
+}
+function idbKeys(store) { return new Promise((res, rej) => { const tx = IDB.transaction(store, 'readonly'), r = tx.objectStore(store).getAllKeys(); tx.oncomplete = () => res(r.result); tx.onerror = () => rej(tx.error); }); }
+const imgIdsIn = h => [...(h || '').matchAll(/data-img="([\w-]+)"/g)].map(m => m[1]);
+function pairSession(role, code, ui) {
+  const conf = sigConf();
+  const myId = role === 'host' ? PAIR_PREFIX + code : PAIR_PREFIX + 'j' + Math.random().toString(36).slice(2, 10);
+  let ws, pc, dc, hb, timer, remote = role === 'join' ? PAIR_PREFIX + code : null, cid = 'dc_' + Math.random().toString(36).slice(2, 10);
+  let closed = false, finished = false, gotData = false, peerDone = false, result = null, sent = 0;
+  const pending = [];
+  const sess = { get finished() { return finished; }, cancel: () => cleanup() };
+  const wsSend = m => { try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); } catch {} };
+  function cleanup() { closed = true; clearInterval(hb); clearTimeout(timer); try { dc && dc.close(); } catch {} try { pc && pc.close(); } catch {} try { ws && ws.close(); } catch {} }
+  function fail(reason) { if (closed || finished) return; cleanup(); ui.error(reason); }
+  function makePC() {
+    pc = new RTCPeerConnection({ iceServers: conf.ice });
+    pc.onicecandidate = e => { if (e.candidate) wsSend({ type: 'CANDIDATE', dst: remote, payload: { candidate: e.candidate.toJSON(), type: 'data', connectionId: cid } }); };
+    pc.onconnectionstatechange = () => { if (pc && pc.connectionState === 'failed') fail('ice'); };
+  }
+  async function addCand(c) { try { await pc.addIceCandidate(c); } catch {} }
+  async function flushCands() { while (pending.length) await addCand(pending.shift()); }
+  /* 데이터 채널: 큰 내용은 잘라서 보내기 */
+  const parts = {};
+  function setupDC(ch) {
+    dc = ch;
+    dc.bufferedAmountLowThreshold = 256 * 1024;
+    dc.onopen = () => { clearTimeout(timer); ui.syncing(); startSync().catch(() => fail('closed')); };
+    dc.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch { return; }
+      if (m.t !== 'c') return;
+      const p = parts[m.id] || (parts[m.id] = { n: m.n, got: 0, a: [] });
+      if (p.a[m.i] == null) { p.a[m.i] = m.d; p.got++; }
+      if (p.got === p.n) { delete parts[m.id]; let o; try { o = JSON.parse(p.a.join('')); } catch { return; } onMsg(o).catch(() => fail('closed')); }
+    };
+    dc.onclose = () => { if (!finished) fail('closed'); };
+  }
+  async function sendMsg(obj) {
+    const s = JSON.stringify(obj), id = Math.random().toString(36).slice(2, 8), N = 15000, n = Math.max(1, Math.ceil(s.length / N));
+    for (let i = 0; i < n; i++) {
+      if (closed) return;
+      if (dc.bufferedAmount > 1024 * 1024) await new Promise(r => { dc.onbufferedamountlow = () => { dc.onbufferedamountlow = null; r(); }; });
+      dc.send(JSON.stringify({ t: 'c', id, i, n, d: s.slice(i * N, (i + 1) * N) }));
+    }
+  }
+  /* 동기화 순서: 서로 가진 목록 교환 → 상대에게 없는/더 오래된 것만 보내기 → 합치기 */
+  async function startSync() {
+    if (S.openId) commit();
+    const notes = {}; for (const [k, n] of Object.entries(S.notes)) notes[k] = n.updated || 0;
+    let images = []; try { images = await idbKeys('img'); } catch {}
+    await sendMsg({ k: 'hello', notes, deleted: S.meta.deleted || {}, images });
+  }
+  async function onMsg(m) {
+    if (m.k === 'hello') {
+      const theirN = m.notes || {}, theirD = m.deleted || {}, theirI = new Set(m.images || []);
+      const out = {};
+      for (const [k, n] of Object.entries(S.notes)) {
+        const u = n.updated || 0;
+        if (k in theirN ? u > theirN[k] : !(theirD[k] >= u)) out[k] = n;
+      }
+      const need = new Set();
+      Object.values(out).forEach(n => imgIdsIn(allHTML(n)).forEach(id => { if (!theirI.has(id)) need.add(id); }));
+      S.tpls.forEach(t => imgIdsIn(t.html).forEach(id => { if (!theirI.has(id)) need.add(id); }));
+      const images = {};
+      for (const id of need) { try { const b = await idbDo('img', 'readonly', st => st.get(id)); if (b) images[id] = await blobToDataURL(b); } catch {} }
+      sent = Object.keys(out).length;
+      ui.syncing(sent ? `메모 ${sent}개를 보내는 중…` : null);
+      await sendMsg({ k: 'data', app: 'memo-seojae', folders: S.folders, templates: S.tpls, notes: out, deleted: S.meta.deleted || {}, images });
+    } else if (m.k === 'data') {
+      result = await mergeData(m);
+      gotData = true;
+      await sendMsg({ k: 'done' });
+      check();
+    } else if (m.k === 'done') { peerDone = true; check(); }
+  }
+  function check() {
+    if (!gotData || !peerDone || finished) return;
+    finished = true; S.meta.lastBackup = Date.now(); saveMeta();
+    ui.done(result || { added: 0, updated: 0, removed: 0, imgs: 0 }, sent);
+    setTimeout(cleanup, 1500);
+  }
+  /* 중계 서버 연결 */
+  try { ws = new WebSocket(`${conf.secure ? 'wss' : 'ws'}://${conf.host}:${conf.port}${conf.path}?key=${conf.key}&id=${encodeURIComponent(myId)}&token=${Math.random().toString(36).slice(2)}&version=1.5.4`); }
+  catch { setTimeout(() => fail('server'), 0); return sess; }
+  let opened = false;
+  ws.onerror = () => { if (!opened) fail('server'); };
+  ws.onclose = () => { if (!opened) fail('server'); };
+  ws.onmessage = async e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    const p = m.payload || {};
+    if (m.type === 'OPEN') {
+      opened = true;
+      hb = setInterval(() => wsSend({ type: 'HEARTBEAT' }), 5000);
+      if (role === 'host') { ui.waiting(); timer = setTimeout(() => fail('timeout'), 10 * 60 * 1000); return; }
+      ui.connecting();
+      makePC();
+      setupDC(pc.createDataChannel('sync', { ordered: true }));
+      const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+      wsSend({ type: 'OFFER', dst: remote, payload: { sdp: { type: offer.type, sdp: offer.sdp }, type: 'data', connectionId: cid, label: 'sync', serialization: 'raw', reliable: true } });
+      timer = setTimeout(() => fail('noanswer'), 15000);
+    } else if (m.type === 'ID-TAKEN') { fail('taken'); }
+    else if (m.type === 'ERROR' || m.type === 'INVALID-KEY') { fail('server'); }
+    else if (m.type === 'EXPIRE') { fail('noanswer'); }
+    else if (m.type === 'OFFER' && role === 'host') {
+      if (pc) return;
+      remote = m.src; cid = p.connectionId || cid;
+      clearTimeout(timer); ui.connecting();
+      makePC();
+      pc.ondatachannel = ev => setupDC(ev.channel);
+      await pc.setRemoteDescription(p.sdp); await flushCands();
+      const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
+      wsSend({ type: 'ANSWER', dst: remote, payload: { sdp: { type: ans.type, sdp: ans.sdp }, type: 'data', connectionId: cid } });
+      timer = setTimeout(() => fail('ice'), 25000);
+    } else if (m.type === 'ANSWER' && role === 'join' && pc) {
+      clearTimeout(timer);
+      await pc.setRemoteDescription(p.sdp); await flushCands();
+      timer = setTimeout(() => fail('ice'), 25000);
+    } else if (m.type === 'CANDIDATE' && p.candidate) {
+      if (pc && pc.remoteDescription) await addCand(p.candidate); else pending.push(p.candidate);
+    } else if (m.type === 'LEAVE' && m.src === remote) { if (!finished) fail('closed'); }
+  };
+  return sess;
+}
+const PAIR_ERR = {
+  server: '연결 서버에 닿지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.',
+  noanswer: '그 코드의 기기를 찾지 못했어요. 상대 기기에서 코드 화면이 켜져 있는지, 숫자가 맞는지 확인해 주세요.',
+  ice: '두 기기를 직접 연결하지 못했어요. 두 기기를 같은 와이파이에 연결하고 다시 해보거나, 아래 「파일로 옮기기」를 이용해 주세요.',
+  closed: '연결이 끊겼어요. 두 기기 모두 담노트 화면을 켜둔 채 다시 해 주세요.',
+  timeout: '10분 동안 연결이 없어서 코드를 닫았어요. 다시 띄워 주세요.',
+  taken: '코드를 만들지 못했어요. 다시 시도해 주세요.',
+};
 function transferDialog() {
   document.body.classList.remove('drawer');
   const mobile = !FINE;
+  let sess = null;
   dialog((b, done) => {
-    const send = el('button', { class: 'btn', text: mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기', onclick: async () => {
-      send.disabled = true; send.textContent = '만드는 중…';
-      try {
-        const { name, text } = await makeBackup();
-        let shared = false;
-        if (mobile && navigator.canShare) {
-          for (const type of ['application/json', 'text/plain']) {
-            const f = new File([text], name, { type });
-            try { if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: name }); shared = true; break; } }
-            catch (e) { if (e && e.name === 'AbortError') { shared = true; break; } }
+    const body = el('div');
+    const stop = () => { if (sess && !sess.finished) sess.cancel(); sess = null; };
+    const close = () => { stop(); done(); };
+    const statusBox = () => el('div', { class: 'pstat' });
+    const showHome = () => {
+      stop();
+      body.replaceChildren(
+        el('p', { text: '두 기기에서 담노트를 열고, 한쪽에서 코드를 띄운 뒤 다른 쪽에서 입력하면 메모·사진이 서로 합쳐져요. 로그인도, 파일도 필요 없어요.' }),
+        el('div', { class: 'pbig' },
+          el('button', { class: 'pbtn', onclick: () => startHost(0) }, el('span', { class: 'pic', text: '🔢' }), el('b', { text: '내 코드 띄우기' }), el('small', { text: '이 기기에 숫자 6자리를 띄워요' })),
+          el('button', { class: 'pbtn', onclick: showJoin }, el('span', { class: 'pic', text: '⌨️' }), el('b', { text: '코드 입력하기' }), el('small', { text: '다른 기기의 숫자를 입력해요' }))),
+        el('div', { class: 'tip', style: 'margin-top:12px', text: IS_IOS ? '📱 아이폰은 꼭 홈 화면에 추가한 담노트에서 해 주세요. 연결하는 동안(몇 초) 화면을 켜두세요.' : '💡 연결하는 동안(몇 초) 두 기기 모두 담노트 화면을 켜두세요. 같은 메모는 더 최근에 고친 쪽이 남아요.' }),
+        fileSection());
+    };
+    const ui = box => ({
+      waiting: () => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: '다른 기기에서 「코드 입력하기」로 이 숫자를 입력해 주세요' })),
+      connecting: () => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: '연결하는 중… 화면을 켜둔 채 기다려 주세요' })),
+      syncing: t => box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: t || '메모를 맞추는 중…' })),
+      done: (r, sentN) => {
+        box.replaceChildren(el('div', { class: 'pok', text: '✓' }), el('span', { text: '두 기기를 맞췄어요!' }));
+        const parts = [];
+        if (r.added) parts.push(`받은 새 메모 ${r.added}개`); if (r.updated) parts.push(`최신으로 바꾼 메모 ${r.updated}개`); if (r.removed) parts.push(`지운 메모 ${r.removed}개`); if (sentN) parts.push(`보낸 메모 ${sentN}개`); if (r.imgs) parts.push(`사진 ${r.imgs}장`);
+        box.after(el('p', { class: 'psum', text: parts.length ? parts.join(' · ') : '이미 두 기기가 똑같았어요' }));
+        toast('두 기기를 맞췄어요');
+      },
+      error: reason => {
+        box.replaceChildren(el('div', { class: 'perr', text: '!' }), el('span', { text: PAIR_ERR[reason] || PAIR_ERR.closed }));
+        box.after(el('div', { class: 'row', style: 'justify-content:center' }, el('button', { class: 'btn ghost', text: '처음으로', onclick: showHome })));
+      },
+    });
+    function startHost(tries = 0) {
+      stop();
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const box = statusBox();
+      body.replaceChildren(el('p', { text: '다른 기기에서 담노트 → 「다른 기기와 맞추기」 → 「코드 입력하기」를 누르고 아래 숫자를 입력해 주세요.' }),
+        el('div', { class: 'pcode', text: code.slice(0, 3) + ' ' + code.slice(3) }), box);
+      box.replaceChildren(el('div', { class: 'spin' }), el('span', { text: '코드를 준비하는 중…' }));
+      const u = ui(box), err = u.error;
+      u.error = r => { if (r === 'taken' && tries < 3) startHost(tries + 1); else err(r); };
+      sess = pairSession('host', code, u);
+    }
+    function showJoin() {
+      stop();
+      const inp = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '7', placeholder: '000 000', class: 'pinput' });
+      const box = statusBox();
+      const go = () => {
+        const code = inp.value.replace(/\D/g, '');
+        if (code.length !== 6) { toast('숫자 6자리를 입력해 주세요'); inp.focus(); return; }
+        inp.disabled = true; btn.disabled = true;
+        sess = pairSession('join', code, ui(box));
+      };
+      const btn = el('button', { class: 'btn', text: '연결하기', onclick: go });
+      inp.addEventListener('input', () => { const d = inp.value.replace(/\D/g, '').slice(0, 6); inp.value = d.length > 3 ? d.slice(0, 3) + ' ' + d.slice(3) : d; if (d.length === 6) go(); });
+      body.replaceChildren(el('p', { text: '다른 기기에 떠 있는 숫자 6자리를 입력해 주세요.' }), inp, el('div', { class: 'row', style: 'justify-content:center;margin-top:10px' }, btn), box);
+      setTimeout(() => inp.focus(), 50);
+    }
+    function fileSection() {
+      const send = el('button', { class: 'btn ghost', text: mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기', onclick: async () => {
+        send.disabled = true;
+        try {
+          const { name, text } = await makeBackup();
+          let shared = false;
+          if (mobile && navigator.canShare) {
+            for (const type of ['application/json', 'text/plain']) {
+              const f = new File([text], name, { type });
+              try { if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: name }); shared = true; break; } }
+              catch (e) { if (e && e.name === 'AbortError') { shared = true; break; } }
+            }
           }
-        }
-        if (!shared) await saveFile(name, new Blob([text], { type: 'application/json' }));
-        S.meta.lastBackup = Date.now(); saveMeta(); renderLib();
-      } finally { send.disabled = false; send.textContent = mobile ? '📤 백업 파일 보내기' : '⬇ 백업 파일 만들기'; }
-    } });
-    const recv = el('button', { class: 'btn', text: '📥 받은 파일 불러오기', onclick: () => { done(); $('#bkFile').click(); } });
-    const step = (n, title, body, btn) => el('div', { class: 'mvstep' }, el('div', { class: 'mvn', text: n }), el('div', { class: 'mvb' }, el('b', { text: title }), el('div', { class: 'mvt', text: body }), btn || ''));
-    b.append(el('h3', { text: '📲 다른 기기로 옮기기' }),
-      el('p', { text: '메모는 기기마다 따로 저장돼서, 파일 하나로 옮겨요. 사진·스티커·폴더까지 함께 가요.' }),
-      step('1', '보내는 기기에서', mobile ? '아래 버튼을 누르고 카카오톡 「나와의 채팅」(또는 메일)을 고르세요.' : '아래 버튼으로 파일을 만든 뒤, 카카오톡 「나와의 채팅」 창에 끌어다 놓거나 메일로 보내세요.', send),
-      step('2', '받는 기기에서', '받은 파일을 기기에 저장한 다음, 담노트 메뉴 → 「다른 기기로 옮기기」 → 아래 버튼으로 그 파일을 골라요.', recv),
-      el('div', { class: 'tip', style: 'margin-top:12px', text: '💡 여러 번 옮겨도 괜찮아요. 같은 메모는 더 최근에 고친 쪽이 남고, 지운 메모는 지운 상태로 맞춰져요.' }),
-      el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: () => done() })));
-  });
+          if (!shared) await saveFile(name, new Blob([text], { type: 'application/json' }));
+          S.meta.lastBackup = Date.now(); saveMeta(); renderLib();
+        } finally { send.disabled = false; }
+      } });
+      const recv = el('button', { class: 'btn ghost', text: '📥 받은 파일 불러오기', onclick: () => { close(); $('#bkFile').click(); } });
+      return el('details', { class: 'pfile' }, el('summary', { text: '연결이 안 될 때: 파일로 옮기기' }),
+        el('p', { text: '보내는 기기에서 백업 파일을 만들어 카카오톡 「나와의 채팅」 등으로 보내고, 받는 기기에서 그 파일을 불러와요.' }),
+        el('div', { class: 'row', style: 'justify-content:flex-start;flex-wrap:wrap;margin-top:6px' }, send, recv));
+    }
+    b.append(el('h3', { text: '📲 다른 기기와 맞추기' }), body, el('div', { class: 'row' }, el('button', { class: 'btn ghost', text: '닫기', onclick: close })));
+    showHome();
+  }).then(() => { if (sess && !sess.finished) sess.cancel(); });
 }
 $('#moveBtn').addEventListener('click', transferDialog);
 $('#bkOut').addEventListener('click', () => { document.body.classList.remove('drawer'); backupOut(); });
