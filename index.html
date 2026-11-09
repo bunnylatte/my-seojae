@@ -459,6 +459,7 @@ body.locked .toast{z-index:220}
 .pok,.perr{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
 .pok{background:#3f9a74}.perr{background:var(--danger)}
 .psum{text-align:center;color:var(--ink);font-weight:500;margin:4px 0 0}
+.pdiag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#9a97a3;text-align:center;margin-top:6px;user-select:all}
 .pfile{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
 .pfile summary{cursor:pointer;color:var(--muted);font-size:13px}
 .pfile p{margin:8px 0 0;font-size:13px}
@@ -1644,7 +1645,7 @@ const pct = px => (px / (paper.clientWidth || 794) * 100).toFixed(2) + '%';
 const FINE = matchMedia('(pointer:fine)').matches;
 const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const IS_STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.1.1';
 const CHANGELOG = [
   { v: '2.1', d: '11월 9일', items: ['📲 다른 기기와 맞추기: 한쪽에 뜬 숫자 6자리를 다른 쪽에 입력하면 메모·사진이 서로 합쳐져요 (로그인·파일 필요 없음)'] },
   { v: '2.0.2', d: '11월 9일', items: ['💬 의견 보내기가 바뀌었어요: 📮 의견함(구글폼) 또는 𝕏 DM으로 보낼 수 있어요'] },
@@ -2309,7 +2310,7 @@ async function mergeData(data) {
 const PAIR_PREFIX = 'damnote-v1-';
 function sigConf() {
   let o = { host: '0.peerjs.com', port: 443, secure: true, path: '/peerjs', key: 'peerjs',
-    ice: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }] };
+    ice: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }] };
   try { const t = localStorage.getItem('damnote:sig'); if (t) o = { ...o, ...JSON.parse(t) }; } catch {}
   return o;
 }
@@ -2321,13 +2322,20 @@ function pairSession(role, code, ui) {
   let ws, pc, dc, hb, timer, remote = role === 'join' ? PAIR_PREFIX + code : null, cid = 'dc_' + Math.random().toString(36).slice(2, 10);
   let closed = false, finished = false, gotData = false, peerDone = false, result = null, sent = 0;
   const pending = [];
+  const diag = { me: { host: 0, srflx: 0, relay: 0 }, peer: { host: 0, srflx: 0, relay: 0 }, ice: '-', step: '' };
+  const candType = c => { const m = /typ (\w+)/.exec((c && (c.candidate || c)) || ''); return m ? m[1] : ''; };
   const sess = { get finished() { return finished; }, cancel: () => cleanup() };
   const wsSend = m => { try { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); } catch {} };
   function cleanup() { closed = true; clearInterval(hb); clearTimeout(timer); try { dc && dc.close(); } catch {} try { pc && pc.close(); } catch {} try { ws && ws.close(); } catch {} }
-  function fail(reason) { if (closed || finished) return; cleanup(); ui.error(reason); }
+  function fail(reason) {
+    if (closed || finished) return;
+    const d = `진단 ${role === 'host' ? 'H' : 'J'}/${diag.step} · 나 h${diag.me.host} s${diag.me.srflx} r${diag.me.relay} · 상대 h${diag.peer.host} s${diag.peer.srflx} r${diag.peer.relay} · ${diag.ice}`;
+    cleanup(); ui.error(reason, d);
+  }
   function makePC() {
     pc = new RTCPeerConnection({ iceServers: conf.ice });
-    pc.onicecandidate = e => { if (e.candidate) wsSend({ type: 'CANDIDATE', dst: remote, payload: { candidate: e.candidate.toJSON(), type: 'data', connectionId: cid } }); };
+    pc.oniceconnectionstatechange = () => { diag.ice = pc ? pc.iceConnectionState : '-'; };
+    pc.onicecandidate = e => { if (e.candidate) { const t = candType(e.candidate); if (t in diag.me) diag.me[t]++; } if (e.candidate) wsSend({ type: 'CANDIDATE', dst: remote, payload: { candidate: e.candidate.toJSON(), type: 'data', connectionId: cid } }); };
     pc.onconnectionstatechange = () => { if (pc && pc.connectionState === 'failed') fail('ice'); };
   }
   async function addCand(c) { try { await pc.addIceCandidate(c); } catch {} }
@@ -2337,7 +2345,7 @@ function pairSession(role, code, ui) {
   function setupDC(ch) {
     dc = ch;
     dc.bufferedAmountLowThreshold = 256 * 1024;
-    dc.onopen = () => { clearTimeout(timer); ui.syncing(); startSync().catch(() => fail('closed')); };
+    dc.onopen = () => { clearTimeout(timer); diag.step = 'dc'; ui.syncing(); startSync().catch(() => fail('closed')); };
     dc.onmessage = e => {
       let m; try { m = JSON.parse(e.data); } catch { return; }
       if (m.t !== 'c') return;
@@ -2403,6 +2411,7 @@ function pairSession(role, code, ui) {
     if (m.type === 'OPEN') {
       opened = true;
       hb = setInterval(() => wsSend({ type: 'HEARTBEAT' }), 5000);
+      diag.step = 'open';
       if (role === 'host') { ui.waiting(); timer = setTimeout(() => fail('timeout'), 10 * 60 * 1000); return; }
       ui.connecting();
       makePC();
@@ -2415,19 +2424,20 @@ function pairSession(role, code, ui) {
     else if (m.type === 'EXPIRE') { fail('noanswer'); }
     else if (m.type === 'OFFER' && role === 'host') {
       if (pc) return;
-      remote = m.src; cid = p.connectionId || cid;
+      remote = m.src; cid = p.connectionId || cid; diag.step = 'offer';
       clearTimeout(timer); ui.connecting();
       makePC();
       pc.ondatachannel = ev => setupDC(ev.channel);
       await pc.setRemoteDescription(p.sdp); await flushCands();
       const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
       wsSend({ type: 'ANSWER', dst: remote, payload: { sdp: { type: ans.type, sdp: ans.sdp }, type: 'data', connectionId: cid } });
-      timer = setTimeout(() => fail('ice'), 25000);
+      timer = setTimeout(() => fail('ice'), 40000);
     } else if (m.type === 'ANSWER' && role === 'join' && pc) {
-      clearTimeout(timer);
+      clearTimeout(timer); diag.step = 'answer';
       await pc.setRemoteDescription(p.sdp); await flushCands();
-      timer = setTimeout(() => fail('ice'), 25000);
+      timer = setTimeout(() => fail('ice'), 40000);
     } else if (m.type === 'CANDIDATE' && p.candidate) {
+      { const t = candType(p.candidate); if (t in diag.peer) diag.peer[t]++; }
       if (pc && pc.remoteDescription) await addCand(p.candidate); else pending.push(p.candidate);
     } else if (m.type === 'LEAVE' && m.src === remote) { if (!finished) fail('closed'); }
   };
@@ -2471,8 +2481,9 @@ function transferDialog() {
         box.after(el('p', { class: 'psum', text: parts.length ? parts.join(' · ') : '이미 두 기기가 똑같았어요' }));
         toast('두 기기를 맞췄어요');
       },
-      error: reason => {
+      error: (reason, d) => {
         box.replaceChildren(el('div', { class: 'perr', text: '!' }), el('span', { text: PAIR_ERR[reason] || PAIR_ERR.closed }));
+        if (d) box.after(el('div', { class: 'pdiag', text: d }));
         box.after(el('div', { class: 'row', style: 'justify-content:center' }, el('button', { class: 'btn ghost', text: '처음으로', onclick: showHome })));
       },
     });
